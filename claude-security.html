@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Security まとめ | keelpop</title>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+font-family:sans-serif;
+line-height:1.9;
+padding:40px 20px;
+max-width:820px;
+margin:0 auto;
+}
+
+h1{
+font-size:34px;
+margin-bottom:6px;
+}
+
+h2{
+font-size:22px;
+margin-top:48px;
+padding-bottom:8px;
+border-bottom:1px solid #334155;
+color:#93c5fd;
+}
+
+h3{
+font-size:17px;
+margin-top:28px;
+color:#e2e8f0;
+}
+
+p{
+opacity:0.85;
+}
+
+.lead{
+opacity:0.7;
+margin-bottom:32px;
+}
+
+.card{
+background:#1e293b;
+border-radius:10px;
+padding:18px 22px;
+margin:18px 0;
+}
+
+.badge{
+display:inline-block;
+background:#2563eb;
+color:white;
+font-size:12px;
+padding:3px 10px;
+border-radius:999px;
+margin-left:8px;
+vertical-align:middle;
+}
+
+ul{
+padding-left:22px;
+}
+
+li{
+margin:8px 0;
+opacity:0.85;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin:18px 0;
+font-size:14px;
+}
+
+th,td{
+border:1px solid #334155;
+padding:10px 12px;
+text-align:left;
+}
+
+th{
+background:#1e293b;
+color:#93c5fd;
+}
+
+code{
+background:#1e293b;
+padding:2px 8px;
+border-radius:6px;
+font-size:14px;
+color:#fbbf24;
+}
+
+a{
+color:#60a5fa;
+}
+
+.note{
+background:#1e293b;
+border-left:4px solid #f59e0b;
+border-radius:6px;
+padding:14px 18px;
+margin:18px 0;
+font-size:14px;
+opacity:0.9;
+}
+
+.back{
+display:inline-block;
+margin-top:48px;
+padding:12px 24px;
+background:#1e293b;
+border-radius:8px;
+text-decoration:none;
+color:white;
+}
+
+.back:hover{
+background:#334155;
+}
+
+footer{
+margin-top:40px;
+font-size:12px;
+opacity:0.5;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Claude Security<span class="badge">Public Beta</span></h1>
+
+<p class="lead">Anthropic の AI セキュリティツール「Claude Security」のまとめ(公式製品ページ・関連情報より/2026年7月時点)</p>
+
+<h2>Claude Security とは</h2>
+
+<p>
+Claude Security は、Anthropic が提供する AI 駆動の脆弱性検出・修正支援ツール。Claude がコードベース全体をスキャンし、発見した脆弱性を自ら検証したうえで、人間がレビュー・承認できる修正パッチを提案する。2026年4月30日にパブリックベータとして公開された。
+</p>
+
+<div class="card">
+<strong>基本の流れ:スキャン → 検証 → 修正提案</strong>
+<ul>
+<li><strong>スキャン</strong> — コードの構造、コンポーネント間の連携、データフローを人間のセキュリティ研究者のように読み解いて解析する</li>
+<li><strong>検証</strong> — すべての検出結果に対して「敵対的検証(adversarial verification)」を実施。Claude が自分の検出結果に反論を試み、誤検知(False Positive)を減らす</li>
+<li><strong>修正提案</strong> — 確認済みの脆弱性に対してパッチを提案。適用するかどうかは人間がレビューして判断する(自動マージはされない)</li>
+</ul>
+</div>
+
+<h2>検出対象の脆弱性</h2>
+
+<p>パターンマッチング型の従来ツールが見逃しやすい、高深刻度の脆弱性に重点を置いている。</p>
+
+<ul>
+<li>メモリ破壊(memory corruption)</li>
+<li>インジェクション系の欠陥(SQLインジェクションなど入力起因の脆弱性)</li>
+<li>認証バイパス・アクセス制御の不備</li>
+<li>暗号・シークレット管理の問題</li>
+<li>複雑なロジックエラー(複数ファイルにまたがる依存関係を追跡して発見)</li>
+</ul>
+
+<h2>提供状況・対象プラン(ベータ情報)</h2>
+
+<table>
+<tr><th>項目</th><th>内容</th></tr>
+<tr><td>ステータス</td><td>パブリックベータ(2026年4月30日開始)</td></tr>
+<tr><td>現在の対象</td><td>Claude Enterprise プランのユーザー</td></tr>
+<tr><td>今後の予定</td><td>Claude Team / Max プランへの提供が「近日中」とアナウンス(日本語ヘルプでは Max・Team・Enterprise 対象と記載されている情報もあり、公式情報間で若干の揺れがある)</td></tr>
+<tr><td>利用場所</td><td>claude.ai のサイドバー、または claude.ai/security から。GitHub リポジトリ全体や特定ディレクトリを指定してスキャン可能</td></tr>
+<tr><td>ベースモデル</td><td>Claude Opus 4.7(大規模コードベースと複雑な依存関係の推論に対応)</td></tr>
+<tr><td>料金</td><td>単体課金ではなく、対象プランの機能として提供</td></tr>
+</table>
+
+<h2>Claude Code プラグイン版</h2>
+
+<p>
+2026年7月には、ターミナルで動く Claude Code 向けの「Claude Security プラグイン」もベータ公開された。開発ワークフローを離れずに、コミット前の変更やコードベース全体をスキャンできる。
+</p>
+
+<div class="card">
+<strong>インストール</strong>
+<p><code>/plugin install claude-security@claude-plugins-official</code></p>
+<p>組織の管理者は claude.ai の管理コンソール(Claude Code 設定)から有効化する。</p>
+</div>
+
+<div class="card">
+<strong>コマンド:<code>/claude-security</code></strong>
+<ul>
+<li><strong>Scan codebase</strong> — リポジトリ全体、または範囲を絞ったスキャン(ファイル数と相対コストが提示される)</li>
+<li><strong>Scan changes</strong> — ブランチの差分、PR の差分、単一コミットのスキャン</li>
+<li><strong>Suggest patches</strong> — レポートの検出結果から <code>.patch</code> ファイルを生成(適用は自分でレビューして実行)</li>
+</ul>
+</div>
+
+<h3>マルチエージェント構成</h3>
+
+<p>
+複数の Claude エージェントがチームとして動作する。アーキテクチャの把握 → 脅威モデルの構築 → 脆弱性ハンティング → 独立レビューという分担で進み、検出結果は「到達可能性(REACHABILITY)・影響(IMPACT)・防御(DEFENSES)」の3観点の敵対的パネルで審査され、3票中2票以上を得たものだけがレポートに載る。
+</p>
+
+<h2>パブリックベータで追加された機能</h2>
+
+<ul>
+<li>定期的な自動スキャンの実行(CI/CD パイプラインへの組み込み要望に対応)</li>
+<li>検出結果ごとの信頼度評価・再現手順・推奨パッチの一括表示</li>
+<li>Claude Code への修正ハンドオフ(提案された修正を Claude Code で実装)</li>
+</ul>
+
+<h2>注意点・制限</h2>
+
+<div class="note">
+<ul>
+<li>提案されたパッチは<strong>必ず人間のレビューが必要</strong>。自動マージの予定はなく、「AI がレビュー候補を出し、人間が判断する」ワークフローが前提</li>
+<li>DAST(動的アプリケーションセキュリティテスト)の代替ではない。認証セッションの問題やレースコンディションなど、実行時の挙動に起因する問題は実アプリのテストが必要</li>
+<li>ベータ版のため、対象プランや機能は今後変わる可能性がある</li>
+</ul>
+</div>
+
+<h2>参考リンク</h2>
+
+<ul>
+<li><a href="https://claude.com/product/claude-security" target="_blank" rel="noopener">Claude Security 公式製品ページ(Anthropic)</a></li>
+<li><a href="https://claude.com/blog/claude-security-public-beta" target="_blank" rel="noopener">Claude Security is now in public beta(公式ブログ)</a></li>
+<li><a href="https://code.claude.com/docs/en/claude-security" target="_blank" rel="noopener">Claude Code ドキュメント:Scan your codebase for vulnerabilities</a></li>
+<li><a href="https://www.marktechpost.com/2026/07/22/anthropic-releases-claude-security-plugin-for-claude-code-in-beta-a-multi-agent-vulnerability-scanner-that-runs-in-your-terminal/" target="_blank" rel="noopener">MarkTechPost:Claude Security Plugin for Claude Code(解説記事)</a></li>
+</ul>
+
+<a class="back" href="index.html">← トップに戻る</a>
+
+<footer>このページは公開情報をもとにした非公式のまとめです(2026年7月24日時点)。最新情報は公式ページをご確認ください。</footer>
+
+</body>
+
+</html>
