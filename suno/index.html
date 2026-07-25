@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suno楽曲管理 | keelpop</title>
+<style>
+body{
+background:#0f172a;
+color:white;
+font-family:sans-serif;
+margin:0;
+padding:40px 20px;
+}
+.container{max-width:900px;margin:0 auto;}
+h1{font-size:36px;margin-bottom:6px;text-align:center;}
+.sub{opacity:0.7;text-align:center;margin-bottom:30px;}
+.nav{text-align:center;margin-bottom:30px;}
+.nav a{color:#7dd3fc;text-decoration:none;margin:0 12px;}
+.nav a:hover{text-decoration:underline;}
+
+.stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;}
+.stat{background:#1e293b;border-radius:8px;padding:14px 22px;text-align:center;min-width:90px;}
+.stat .num{font-size:28px;font-weight:bold;}
+.stat .label{font-size:12px;opacity:0.7;}
+
+.filters{text-align:center;margin-bottom:24px;}
+.filters button{
+background:#1e293b;color:white;border:none;border-radius:20px;
+padding:8px 18px;margin:4px;font-size:14px;cursor:pointer;
+}
+.filters button:hover{background:#334155;}
+.filters button.active{background:#0284c7;}
+
+.card{
+background:#1e293b;border-radius:10px;padding:20px;margin-bottom:16px;
+text-align:left;
+}
+.card h2{margin:0 0 8px;font-size:20px;}
+.badge{
+display:inline-block;font-size:12px;border-radius:12px;padding:3px 10px;
+margin-right:8px;vertical-align:middle;
+}
+.badge.公開済み{background:#166534;}
+.badge.制作中{background:#854d0e;}
+.badge.アイデア{background:#475569;}
+.genre{opacity:0.7;font-size:14px;margin-bottom:8px;}
+.prompt{
+background:#0f172a;border-radius:6px;padding:10px;font-size:13px;
+font-family:monospace;opacity:0.85;margin:10px 0;word-break:break-all;
+}
+.meta{font-size:13px;opacity:0.8;}
+.sns span{margin-right:10px;}
+.sns .done{color:#4ade80;}
+.sns .todo{opacity:0.4;}
+.card a.sunolink{color:#7dd3fc;font-size:14px;text-decoration:none;}
+.card a.sunolink:hover{text-decoration:underline;}
+.memo{font-size:13px;opacity:0.7;margin-top:8px;border-left:3px solid #334155;padding-left:10px;}
+.error{text-align:center;opacity:0.7;margin-top:40px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Suno楽曲管理</h1>
+<p class="sub">keelpop の Suno 楽曲ダッシュボード</p>
+
+<div class="nav">
+<a href="../index.html">← トップ</a>
+<a href="workflow.html">運用ワークフロー</a>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="filters" id="filters">
+<button data-f="all" class="active">すべて</button>
+<button data-f="公開済み">公開済み</button>
+<button data-f="制作中">制作中</button>
+<button data-f="アイデア">アイデア</button>
+</div>
+
+<div id="list"></div>
+
+</div>
+
+<script>
+let songs = [];
+let filter = "all";
+
+function render(){
+  const list = document.getElementById("list");
+  const shown = songs.filter(s => filter === "all" || s.status === filter);
+  if(shown.length === 0){
+    list.innerHTML = '<p class="error">該当する楽曲がありません。</p>';
+    return;
+  }
+  list.innerHTML = shown.map(s => {
+    const snsIcons = [["youtube","YouTube"],["x","X"],["tiktok","TikTok"]]
+      .map(([k,label]) => `<span class="${s.sns && s.sns[k] ? "done" : "todo"}">${s.sns && s.sns[k] ? "✔" : "・"} ${label}</span>`)
+      .join("");
+    return `
+    <div class="card">
+      <h2><span class="badge ${s.status}">${s.status}</span>${escapeHtml(s.title)}</h2>
+      <div class="genre">${escapeHtml(s.genre || "")}</div>
+      ${s.prompt ? `<div class="prompt">${escapeHtml(s.prompt)}</div>` : ""}
+      <div class="meta">
+        ${s.releaseDate ? `公開日: ${s.releaseDate} ／ ` : ""}
+        ${s.sunoUrl ? `<a class="sunolink" href="${encodeURI(s.sunoUrl)}" target="_blank" rel="noopener">Sunoで聴く ↗</a>` : "リンク未登録"}
+      </div>
+      <div class="meta sns" style="margin-top:6px">SNS展開: ${snsIcons}</div>
+      ${s.memo ? `<div class="memo">${escapeHtml(s.memo)}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function renderStats(){
+  const total = songs.length;
+  const count = st => songs.filter(s => s.status === st).length;
+  document.getElementById("stats").innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="label">全楽曲</div></div>
+    <div class="stat"><div class="num">${count("公開済み")}</div><div class="label">公開済み</div></div>
+    <div class="stat"><div class="num">${count("制作中")}</div><div class="label">制作中</div></div>
+    <div class="stat"><div class="num">${count("アイデア")}</div><div class="label">アイデア</div></div>`;
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+document.getElementById("filters").addEventListener("click", e => {
+  if(e.target.tagName !== "BUTTON") return;
+  filter = e.target.dataset.f;
+  document.querySelectorAll("#filters button").forEach(b => b.classList.toggle("active", b === e.target));
+  render();
+});
+
+fetch("songs.json")
+  .then(r => r.json())
+  .then(data => { songs = data.songs || []; renderStats(); render(); })
+  .catch(() => {
+    document.getElementById("list").innerHTML =
+      '<p class="error">songs.json を読み込めませんでした。GitHub Pages 上で開くか、ローカルサーバー経由で表示してください。</p>';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suno運用ワークフロー | keelpop</title>
+<style>
+body{
+background:#0f172a;
+color:white;
+font-family:sans-serif;
+margin:0;
+padding:40px 20px;
+line-height:1.8;
+}
+.container{max-width:800px;margin:0 auto;}
+h1{font-size:32px;text-align:center;margin-bottom:6px;}
+.sub{opacity:0.7;text-align:center;margin-bottom:30px;}
+.nav{text-align:center;margin-bottom:30px;}
+.nav a{color:#7dd3fc;text-decoration:none;margin:0 12px;}
+.nav a:hover{text-decoration:underline;}
+section{
+background:#1e293b;border-radius:10px;padding:24px 28px;margin-bottom:20px;
+}
+h2{font-size:20px;margin-top:0;border-bottom:1px solid #334155;padding-bottom:8px;}
+h3{font-size:16px;margin-bottom:6px;color:#7dd3fc;}
+ul,ol{padding-left:22px;margin:8px 0;}
+li{margin:4px 0;}
+code,pre{
+background:#0f172a;border-radius:6px;font-family:monospace;font-size:13px;
+}
+code{padding:2px 6px;}
+pre{padding:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;}
+.note{font-size:13px;opacity:0.7;border-left:3px solid #334155;padding-left:10px;margin-top:10px;}
+input[type=checkbox]{margin-right:8px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Suno運用ワークフロー</h1>
+<p class="sub">制作 → 公開 → SNS展開 の手順書とテンプレート</p>
+
+<div class="nav">
+<a href="../index.html">← トップ</a>
+<a href="index.html">楽曲管理</a>
+</div>
+
+<section>
+<h2>1. 週次の運用サイクル(推奨)</h2>
+<ol>
+<li><strong>月曜:</strong> 新曲アイデア出し(1〜3件)→ 楽曲管理に「アイデア」として登録</li>
+<li><strong>火〜木:</strong> Sunoで生成・選定・リテイク(1曲あたり4〜8テイク目安)</li>
+<li><strong>金曜:</strong> ベストテイクを確定 → 下のリリースチェックリストを実施</li>
+<li><strong>土日:</strong> SNS展開(YouTube / X / TikTok)、反応の記録</li>
+</ol>
+<p class="note">週1曲ペースを想定した例です。ペースに合わせて調整してください。</p>
+</section>
+
+<section>
+<h2>2. プロンプトテンプレート集</h2>
+
+<h3>基本形</h3>
+<pre>[ジャンル], [ボーカル種別], [雰囲気・情景], [テンポ/BPM], [楽器の特徴]</pre>
+
+<h3>J-Popバラード</h3>
+<pre>emotional j-pop ballad, female vocal, piano and strings, nostalgic, 72bpm, building chorus</pre>
+
+<h3>シティポップ / Synthwave</h3>
+<pre>80s japanese city pop, dreamy synthwave, female vocal, night drive, funky bassline, 105bpm</pre>
+
+<h3>ゲームBGM(ループ用インスト)</h3>
+<pre>instrumental, loopable game bgm, [ステージの雰囲気], no vocal, seamless loop, consistent energy</pre>
+
+<h3>リテイク時のコツ</h3>
+<ul>
+<li>気に入ったテイクは Extend で伸ばす(丸ごと再生成より安定)</li>
+<li>ボーカルの発音が崩れる場合は歌詞のカタカナ/ローマ字表記を試す</li>
+<li>スタイル指定は3〜5要素まで。多すぎると平均化されてぼやける</li>
+<li>採用しなかったテイクのURLもメモ欄に残す(後で化けることがある)</li>
+</ul>
+</section>
+
+<section>
+<h2>3. リリースチェックリスト</h2>
+<ul style="list-style:none;padding-left:0;">
+<li><input type="checkbox">ベストテイクを決定し、Sunoでタイトル・カバー画像を設定した</li>
+<li><input type="checkbox">歌詞の誤字・不自然な発音がないか最後まで通しで聴いた</li>
+<li><input type="checkbox">Suno上の公開設定(Public/Private)を確認した</li>
+<li><input type="checkbox">音源をダウンロードしてバックアップした</li>
+<li><input type="checkbox"><code>suno/songs.json</code> に楽曲情報を追加・更新した</li>
+<li><input type="checkbox">公開日とSuno URLを記録した</li>
+</ul>
+<p class="note">商用利用や外部配信をする場合は、契約中のSunoプランの利用規約(権利範囲)を必ず確認してください。無料プランは商用利用不可です。</p>
+</section>
+
+<section>
+<h2>4. SNS展開手順</h2>
+<h3>YouTube</h3>
+<ul>
+<li>静止画+音源の動画化(サムネはカバー画像を流用)</li>
+<li>タイトル例: <code>【AI Music】曲名 / keelpop</code></li>
+<li>説明欄にSunoで制作した旨とジャンルタグを記載</li>
+</ul>
+<h3>X (Twitter)</h3>
+<ul>
+<li>公開直後に告知ポスト(試聴リンク+ジャンル+一言コメント)</li>
+<li>ハッシュタグ例: <code>#Suno #AIMusic #AI音楽</code></li>
+</ul>
+<h3>TikTok</h3>
+<ul>
+<li>サビの15〜30秒を切り出してショート動画化</li>
+<li>フックが強い曲を優先(全曲やらなくてよい)</li>
+</ul>
+</section>
+
+<section>
+<h2>5. 楽曲データの更新方法</h2>
+<p><code>suno/songs.json</code> の <code>songs</code> 配列に1曲ずつ追加します。</p>
+<pre>{
+  "id": 4,
+  "title": "曲名",
+  "status": "公開済み",        ← 公開済み / 制作中 / アイデア
+  "genre": "ジャンル",
+  "sunoUrl": "https://suno.com/song/...",
+  "prompt": "使用したプロンプト",
+  "releaseDate": "2026-08-01",
+  "sns": { "youtube": false, "x": false, "tiktok": false },
+  "memo": "自由メモ"
+}</pre>
+<p class="note">Claudeのセッションで「この曲を追加して」と曲情報を伝えれば、JSON編集からコミット・プッシュまで代行できます。</p>
+</section>
+
+</div>
+</body>
+</html>
