@@ -162,6 +162,34 @@ fi
 say "-- 6/6 GitHub に上げます"
 if git remote get-url origin >/dev/null 2>&1; then
   echo "  origin は既に設定済み: $(git remote get-url origin)"
+  # origin が「ある」ことは、その先に本当にリポジトリがあることを意味しない。
+  # git remote add は文字列を書くだけなので、存在確認にはならない。
+  # 実際にこれで「作成を飛ばして push して Repository not found」になった。
+  if ! git ls-remote origin >/dev/null 2>&1; then
+    echo "  ただし、その先に届きません。原因は次のどちらかです:" >&2
+    echo "    (a) GitHub 側にリポジトリがまだ無い" >&2
+    echo "    (b) この git に認証が通っていない" >&2
+    if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
+      echo "  gh が使えるので、リポジトリの有無を確かめます…" >&2
+      if ! gh repo view "$REPO_NAME" >/dev/null 2>&1; then
+        echo "  無かったので作ります。" >&2
+        gh repo create "$REPO_NAME" --private || ng "リポジトリの作成に失敗しました。"
+      fi
+    fi
+    if ! git ls-remote origin >/dev/null 2>&1; then
+      ng "まだ届きません。認証の問題です。
+
+いま動いているのは $(grep -qi microsoft /proc/version 2>/dev/null && echo 'WSL' || echo 'Git Bash') の git です。
+Windows 側で gh auth login を済ませても、**この git には効きません**。別々に認証が要ります。
+
+いちばん確実なのは、PowerShell（Windows の git）から押すことです:
+
+  cd $(printf '%s' "$TARGET" | sed -e 's|^/mnt/\([a-z]\)/|\U\1:/|' -e 's|^/\([a-z]\)/|\U\1:/|')
+  git push -u origin main
+
+同じフォルダなので、どちらの git から押しても中身は同じです。"
+    fi
+  fi
 elif command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   gh repo create "$REPO_NAME" --private --source=. --remote=origin \
     || ng "リポジトリの作成に失敗しました。同じ名前が既にあるかもしれません。第2引数で別の名前を指定してください。"
