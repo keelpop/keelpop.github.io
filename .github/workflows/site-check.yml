@@ -20,3 +20,6 @@ jobs:
           python-version: '3.11'
       - name: サイトとルール系の検査
         run: python3 tools/check_site.py
+
+      - name: 自動マージの通す/止めるが崩れていないか
+        run: python3 tools/test_automerge_gate.py

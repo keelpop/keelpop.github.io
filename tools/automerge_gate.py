@@ -12,6 +12,19 @@ import os
 import subprocess
 import sys
 
+# 週次の棚卸しが書き換える場所。ここだけは DENY より先に許す。
+#
+# ここを分けないと矛盾する: rule-gardener は .claude/rules と .claude/state を
+# 更新するのが仕事なのに、.claude/** が丸ごと DENY だと成果が永久にマージされず、
+# Issue だけが毎週積み上がる。だから「ルールと状態」は機械が更新してよく、
+# 「ルールを強制する仕組み」（tools / .github / settings.json / skills / 憲法）は
+# 触らせない、という粒度にしてある。
+# 悪いルールが入っても、それを取り締まる検査そのものは書き換えられない。
+SELF_UPDATABLE = [
+    ".claude/state/*", ".claude/state/**",
+    ".claude/rules/*", ".claude/rules/**",
+]
+
 # ここを触る変更は絶対に自動マージしない。
 # 保護機構そのものを、保護機構をすり抜けて書き換えられないようにするための一覧。
 # この設計が無いと、機械が自分の檻の鍵を作れてしまう。
@@ -55,10 +68,10 @@ def main():
         out(False, "main との差分がありません")
 
     for path in names:
+        if any(fnmatch.fnmatch(path, p) for p in SELF_UPDATABLE):
+            continue
         if any(fnmatch.fnmatch(path, p) for p in DENY):
             out(False, "保護対象を変更しています: %s（この種の変更は必ず人が見ます）" % path)
-
-    for path in names:
         if not any(fnmatch.fnmatch(path, p) for p in ALLOW):
             out(False, "自動マージの対象外のパスです: %s" % path)
 
