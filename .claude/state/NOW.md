@@ -1,20 +1,20 @@
-# NOW  updated: 2026-08-08 / by: session-optimization
+# NOW  updated: 2026-08-08 / by: followup-site-quality
 
 ## いま何をしているか
 
-goal: 41セッション分の失敗を機械で防ぐ仕組みを入れる
-branch: claude/session-optimization-points-hrr6fx
-次の一手: 持ち主が GitHub の画面でこのブランチを main にマージする。
-    それまで仕組みは動かない（main に tools/ も .github/ も無い）。
-やらない: 既存ページの中身の書き換え・共通CSS化・desktop-cat の作り込み
+goal: 仕組みを main で実際に回し、残っていた品質の穴を塞ぐ
+branch: claude/followup-site-quality-and-sweep
+次の一手: このブランチが自動マージされることを確認する。
+    これが通れば「普通のページ追加は人が触らなくても公開される」が実証される。
+やらない: 既存ページの本文の書き換え・共通CSS化・desktop-cat の作り込み
 
 ## 直近の決定（最大5件。溢れたら DECISIONS.md へ）
 
 - 2026-08-08 未マージ4ブランチ 6,394行を main へ統合 (D-0002)
 - 2026-08-08 ルールと状態は機械が更新可、それを強制する仕組みは触らせない (D-0003)
-- 2026-08-08 リモートでも hooks と skills が有効だと実測で確認 (D-0004)
-- 2026-08-08 週次メンテナンスの Routine を作成（月 09:00 JST） (D-0005)
 - 2026-08-08 自動マージは PR を経由せず main へ直接。保留は Issue (D-0006)
+- 2026-08-08 仕組み一式を main にマージ。ここから自動処理が実際に動く (D-0007)
+- 2026-08-08 外部スクリプトは WARN 止まり。translator の tesseract.js は正当な依存 (D-0008)
 
 ## 待ち（due と default が無いものは書いてはいけない）
 

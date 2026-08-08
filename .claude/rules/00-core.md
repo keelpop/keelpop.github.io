@@ -26,11 +26,11 @@ status: active
 since: 2026-08-08
 review: 2026-11-08
 trigger: ブランチに push した後
-rule: `claude/*` への push で PR が自動作成される。安全条件を満たすものは自動マージされるので、人が待つ必要はない。条件を満たさない場合だけ `needs-human` が付く。
+rule: `claude/*` への push で、安全条件を満たすものは main へ自動マージされる。人が待つ必要はない。条件を満たさない場合は「手動で確認してほしい: <ブランチ名>」の Issue が立つ。止めたいときはリポジトリ直下に `.no-automerge` を置く。
 check: .github/workflows/autoflow.yml
 evidence: INC-0003
 baseline: 4/150d
-after: -
+after: 0/1d
 hits: 4
 
 ### R-003 待ちには必ず期限と既定動作を書く
