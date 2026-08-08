@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desktop Cat — sandbox</title>
+  <script>
+    window.__errs = [];
+    window.addEventListener('error', (e) => {
+      window.__errs.push(`${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`);
+    });
+  </script>
+  <style>
+    :root { color-scheme: dark; }
+    html, body {
+      margin: 0; height: 100%; overflow: hidden;
+      background: #1b1e24;
+      font: 13px/1.5 ui-sans-serif, system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      color: #d6dae2;
+    }
+    /* A stand-in desktop, so occlusion and "sitting on your work" are visible. */
+    #desk {
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(1200px 700px at 30% -10%, #2b3140 0%, #1b1e24 70%),
+        #1b1e24;
+    }
+    .fakewin {
+      position: absolute;
+      background: #262b35;
+      border: 1px solid #39404e;
+      border-radius: 7px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+      overflow: hidden;
+    }
+    .fakewin header {
+      height: 28px; background: #313846; border-bottom: 1px solid #3d4553;
+      display: flex; align-items: center; gap: 6px; padding: 0 10px;
+      font-size: 11px; color: #97a1b3;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #4a5364; }
+    .fakewin pre {
+      margin: 0; padding: 12px 14px; font: 11px/1.7 ui-monospace, monospace;
+      color: #6f7a8d; white-space: pre-wrap;
+    }
+    #stage { position: fixed; inset: 0; }
+    #cat { display: block; width: 100%; height: 100%; }
+    #hud {
+      position: fixed; left: 10px; top: 10px;
+      font: 11px/1.45 ui-monospace, monospace; color: #b8f5c0;
+      background: rgba(8,10,14,0.78); padding: 7px 10px; border-radius: 6px;
+      white-space: pre; display: none; z-index: 5;
+    }
+    #help {
+      position: fixed; right: 12px; bottom: 12px; z-index: 5;
+      background: rgba(12,15,20,0.86); border: 1px solid #333c4a;
+      padding: 12px 14px; border-radius: 8px; max-width: 340px;
+    }
+    #help h1 { margin: 0 0 6px; font-size: 13px; letter-spacing: .02em; }
+    #help p { margin: 0 0 8px; color: #99a3b4; }
+    #help kbd {
+      background: #2b323e; border: 1px solid #414a5a; border-bottom-width: 2px;
+      border-radius: 4px; padding: 0 5px; font: 11px ui-monospace, monospace;
+    }
+    #help ul { margin: 0; padding-left: 18px; color: #b6bfcd; }
+    #help li { margin: 2px 0; }
+  </style>
+</head>
+<body>
+  <div id="desk">
+    <div class="fakewin" style="left:9%; top:14%; width:46%; height:52%;">
+      <header><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>editor — brain.js</span></header>
+      <pre>// The cat does not know this is not a real desktop.
+function chooseIdleState() {
+  if (energy &lt; 0.2) return 'goSleep';
+  if (boredom &gt; 0.7) return 'wander';
+  return 'sitIdle';
+}</pre>
+    </div>
+    <div class="fakewin" style="right:7%; top:26%; width:31%; height:38%;">
+      <header><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>terminal</span></header>
+      <pre>$ npm start
+[desktop-cat] overlay up
+[desktop-cat] D&amp;D detection: heuristic</pre>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="cat"></canvas>
+  </div>
+  <div id="hud"></div>
+
+  <div id="help">
+    <h1>Desktop Cat — sandbox</h1>
+    <p>実アプリと同じ rig / draw / brain を、ブラウザ上で動かしています。
+       この窓は飾りですが、猫はカーソルを本物として扱います。</p>
+    <ul>
+      <li>猫の上でカーソルを<b>往復</b>させると撫でられる</li>
+      <li>ドラッグ（ボタン押しっぱなし）でソワソワする</li>
+      <li><kbd>f</kbd> ごはん / <kbd>c</kbd> おいで / <kbd>p</kbd> 遊ぶ</li>
+      <li><kbd>s</kbd> 寝かせる / <kbd>h</kbd> かくれる</li>
+      <li><kbd>t</kbd> 「タイピング中」を切替 / <kbd>d</kbd> デバッグ表示 / <kbd>k</kbd> 骨格</li>
+    </ul>
+  </div>
+
+  <script src="../src/renderer/rig.js"></script>
+  <script src="../src/renderer/draw.js"></script>
+  <script src="../src/renderer/brain.js"></script>
+  <script src="../src/renderer/app.js"></script>
+  <script>
+    // Feed the fake windows in as occluders so the lurking behaviour has
+    // somewhere to lurk, exactly as the real window probe would.
+    (function () {
+      const s = window.__catSandbox;
+      if (!s) return;
+      function sync() {
+        const rects = [];
+        for (const el of document.querySelectorAll('.fakewin')) {
+          const r = el.getBoundingClientRect();
+          rects.push({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom });
+        }
+        s.sensors.occluders = rects;
+      }
+      sync();
+      window.addEventListener('resize', sync);
+    })();
+  </script>
+</body>
+</html>

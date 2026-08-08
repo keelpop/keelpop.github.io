@@ -1,0 +1,38 @@
+{
+  "updated": "2026-07-25",
+  "songs": [
+    {
+      "id": 1,
+      "title": "(サンプル)Midnight Drive",
+      "status": "公開済み",
+      "genre": "Synthwave / City Pop",
+      "sunoUrl": "https://suno.com/song/xxxxxxxx",
+      "prompt": "dreamy synthwave, female vocal, 80s city pop, night drive mood, 105bpm",
+      "releaseDate": "2026-07-01",
+      "sns": { "youtube": true, "x": true, "tiktok": false },
+      "memo": "これはサンプルデータです。songs.json を編集して差し替えてください。"
+    },
+    {
+      "id": 2,
+      "title": "(サンプル)夏の残像",
+      "status": "制作中",
+      "genre": "J-Pop / Ballad",
+      "sunoUrl": "",
+      "prompt": "emotional j-pop ballad, piano intro, male vocal, summer nostalgia",
+      "releaseDate": "",
+      "sns": { "youtube": false, "x": false, "tiktok": false },
+      "memo": "サビのメロディを再生成予定"
+    },
+    {
+      "id": 3,
+      "title": "(サンプル)ゲームBGM: 洞窟ステージ",
+      "status": "アイデア",
+      "genre": "Instrumental / Chiptune",
+      "sunoUrl": "",
+      "prompt": "dark ambient chiptune, cave exploration, loopable, no vocal",
+      "releaseDate": "",
+      "sns": { "youtube": false, "x": false, "tiktok": false },
+      "memo": "自作ゲーム用。ループ素材として書き出す"
+    }
+  ]
+}

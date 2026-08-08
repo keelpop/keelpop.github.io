@@ -1,0 +1,30 @@
+name: site-check
+
+# すべての push と PR で走る。ERROR があれば赤くなり、自動マージが止まる。
+# push 契機にしているのは、GITHUB_TOKEN が作った PR は pull_request を
+# 起動しないという GitHub の仕様のため。チェックはコミット SHA に紐づくので、
+# push 側の結果がそのまま PR の必須チェックを満たす。
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # 無いと check_site のワークフロー検査が簡易版に落ち、
+      # 字下げ崩れのような本来の YAML 破損を素通しする。
+      - name: pyyaml
+        run: pip install --quiet pyyaml
+
+      - name: サイトとルール系の検査
+        run: python3 tools/check_site.py
+
+      - name: 自動マージの通す/止めるが崩れていないか
+        run: python3 tools/test_automerge_gate.py
