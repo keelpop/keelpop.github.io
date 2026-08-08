@@ -1,5 +1,5 @@
 /* ============================================================
-   残響 — 音響エンジン
+   息を殺して — 音響エンジン
    すべての音を Web Audio API で合成する（音声ファイル不要）。
    ============================================================ */
 
@@ -7,7 +7,7 @@ var SFX = (function () {
   'use strict';
 
   var ctx = null;
-  var master, revSend, revNode, noiseBuf;
+  var master, revSend, revNode, noiseBuf, muffle, inner;
   var drone = null;
   var ready = false;
 
@@ -42,9 +42,21 @@ var SFX = (function () {
     if (!AC) return false;
     ctx = new AC();
 
+    /* 息を止めている間は世界の音がこもり、自分の鼓動だけが近くなる */
+    muffle = ctx.createBiquadFilter();
+    muffle.type = 'lowpass';
+    muffle.frequency.value = 18000;
+    muffle.Q.value = 0.5;
+    muffle.connect(ctx.destination);
+
     master = ctx.createGain();
     master.gain.value = 0.85;
-    master.connect(ctx.destination);
+    master.connect(muffle);
+
+    /* 鼓動はこもりの外側 ― 体内の音なので常にはっきり聞こえる */
+    inner = ctx.createGain();
+    inner.gain.value = 1.0;
+    inner.connect(ctx.destination);
 
     revNode = ctx.createConvolver();
     revNode.buffer = makeIR(2.8, 2.2);
@@ -184,21 +196,96 @@ var SFX = (function () {
   }
 
   /* ---------------- 心臓の鼓動 ---------------- */
-  function heart(prox) {
+  /* held: 息を止めている間は自分の鼓動だけが大きく聞こえる */
+  function heart(intensity, held) {
     if (!ready) return;
     var t = now();
+    var amp = 0.20 + intensity * 0.42;
+    if (held) amp *= 1.7;
     for (var i = 0; i < 2; i++) {
       var o = ctx.createOscillator();
       o.type = 'sine';
-      var s = t + i * 0.17;
-      o.frequency.setValueAtTime(72, s);
-      o.frequency.exponentialRampToValueAtTime(34, s + 0.14);
+      var s = t + i * 0.16;
+      o.frequency.setValueAtTime(76, s);
+      o.frequency.exponentialRampToValueAtTime(32, s + 0.14);
       var g = ctx.createGain();
-      env(g, s, (i === 0 ? 0.34 : 0.22) * (0.35 + prox * 0.65), 0.012, 0.14);
+      env(g, s, amp * (i === 0 ? 1 : 0.62), 0.012, 0.15);
       o.connect(g);
-      route(g, 0.15);
-      o.start(s); o.stop(s + 0.32);
+      g.connect(inner);
+      o.start(s); o.stop(s + 0.34);
     }
+  }
+
+  /* ---------------- 舌打ち（狭く鋭い探査音） ---------------- */
+  function click() {
+    if (!ready) return;
+    var t = now();
+    var src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    var f = ctx.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = 3400; f.Q.value = 2.4;
+    var g = ctx.createGain();
+    env(g, t, 0.20, 0.002, 0.035);
+    src.connect(f); f.connect(g);
+    route(g, 0.55);
+    src.start(t); src.stop(t + 0.3);
+  }
+
+  /* ---------------- 呼ぶ（遠くまで届く声） ---------------- */
+  function call() {
+    if (!ready) return;
+    var t = now();
+    var o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(210, t);
+    o.frequency.linearRampToValueAtTime(158, t + 0.55);
+
+    /* ざらついた声にするための軽いフォルマント */
+    var f1 = ctx.createBiquadFilter();
+    f1.type = 'bandpass'; f1.frequency.value = 620; f1.Q.value = 4;
+    var f2 = ctx.createBiquadFilter();
+    f2.type = 'bandpass'; f2.frequency.value = 1180; f2.Q.value = 6;
+    var mix = ctx.createGain();
+
+    var g = ctx.createGain();
+    env(g, t, 0.34, 0.05, 0.6);
+
+    o.connect(f1); o.connect(f2);
+    f1.connect(mix); f2.connect(mix);
+    mix.connect(g);
+    route(g, 1.0);
+    o.start(t); o.stop(t + 0.9);
+  }
+
+  /* ---------------- 息が続かず漏れる喘ぎ ---------------- */
+  function gasp() {
+    if (!ready) return;
+    var t = now();
+    var src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    var f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(700, t);
+    f.frequency.linearRampToValueAtTime(1900, t + 0.34);
+    f.Q.value = 1.4;
+    var g = ctx.createGain();
+    env(g, t, 0.34, 0.09, 0.34);
+    src.connect(f); f.connect(g);
+    g.connect(inner);
+    route(g, 0.7);
+    src.start(t); src.stop(t + 0.9);
+  }
+
+  /* ---------------- 息を止める / 解く ---------------- */
+  function setMuffle(on) {
+    if (!ready) return;
+    var t = now();
+    muffle.frequency.cancelScheduledValues(t);
+    muffle.frequency.setValueAtTime(muffle.frequency.value, t);
+    muffle.frequency.linearRampToValueAtTime(on ? 780 : 18000, t + 0.28);
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(on ? 0.55 : 0.85, t + 0.28);
   }
 
   /* ---------------- 遺物を拾う ---------------- */
@@ -328,6 +415,7 @@ var SFX = (function () {
 
   return {
     init: init, step: step, clap: clap, growl: growl, heart: heart,
+    click: click, call: call, gasp: gasp, setMuffle: setMuffle,
     pickup: pickup, beacon: beacon, death: death, clear: clear,
     ambient: ambient, suspend: suspend, resume: resume,
     isReady: function () { return ready; }

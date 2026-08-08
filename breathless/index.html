@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="音を頼りに暗闇を測り、鼓動を殺して化け物をやり過ごすホラーゲーム。イヤホン推奨。">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>息を殺して — Breathless</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cg fill='%236fd8e8'%3E%3Crect x='15' y='15' width='2' height='2'/%3E%3Crect x='6' y='9' width='2' height='6' opacity='.7'/%3E%3Crect x='24' y='14' width='2' height='7' opacity='.7'/%3E%3Crect x='11' y='24' width='7' height='2' opacity='.7'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="game"></canvas>
+
+  <!-- ゲーム中のHUD -->
+  <div id="hud" class="hidden">
+    <div id="hudLeft">
+      <div id="levelName"></div>
+      <div id="relicInfo"></div>
+    </div>
+    <button id="pauseBtn" aria-label="ポーズ">| |</button>
+
+    <div id="hint"></div>
+
+    <!-- 息ゲージと鼓動 -->
+    <div id="vitals">
+      <div id="breathTrack"><div id="breathBar"></div></div>
+      <div id="heartDot"></div>
+    </div>
+
+    <!-- 舌打ちのクールタイム -->
+    <div id="clickMeter"><div id="clickFill"></div></div>
+
+    <!-- 行動ボタン -->
+    <div id="acts">
+      <button id="callBtn" class="act" aria-label="呼ぶ">呼</button>
+      <button id="holdBtn" class="act hold" aria-label="息を止める">息</button>
+    </div>
+  </div>
+
+  <!-- タイトル -->
+  <div id="titleScreen" class="overlay">
+    <h1>息を殺して</h1>
+    <p class="sub">BREATHLESS</p>
+    <p class="lead">
+      光はない。<br>
+      音を投げ、返ってきた形を憶えるしかない。<br>
+      そして——<span class="warn">鼓動は、隠せない。</span>
+    </p>
+    <button class="big" id="startBtn">はじめる</button>
+    <p class="note">🎧 イヤホン推奨 / 音量をオンにしてください</p>
+    <p class="note dim">音が出ます。周囲にご注意ください。</p>
+  </div>
+
+  <!-- ステージ選択 -->
+  <div id="selectScreen" class="overlay hidden">
+    <h2>ステージ選択</h2>
+    <div id="levelList"></div>
+    <button class="small" id="howtoBtn">あそびかた</button>
+    <button class="small ghost" id="resetBtn">記録を消す</button>
+  </div>
+
+  <!-- あそびかた -->
+  <div id="howtoScreen" class="overlay hidden">
+    <h2>あそびかた</h2>
+    <ul class="howto">
+      <li><b>画面をドラッグ</b>して移動。大きく倒すと走ります。</li>
+      <li><b>短くタップ</b>で<b>舌打ち</b>。<br>
+          正面へ細く鋭く飛ぶ探査音。ほとんど聞かれません。</li>
+      <li><b>〈呼〉</b>は全方位へ遠くまで届く声。<br>
+          広く見えますが、<span class="warn">あちらにも同じだけ届きます。</span></li>
+      <li><b>〈息〉を押し続ける</b>と息を止めます。<br>
+          足音も鼓動も漏れませんが、遅くなり、息は尽きます。<br>
+          尽きると大きく喘ぎます。</li>
+      <li>音が返ってきた壁は<span class="map">地図として刻まれ</span>、<br>
+          しばらく残ってから薄れていきます。</li>
+      <li><span class="warn">怖がるほど鼓動は速く、遠くまで届きます。</span></li>
+      <li><span class="beast">橙の波</span>は化け物。触れたら死。<br>
+          <b>時々立ち止まって耳を澄まし、完全に無音になります。</b></li>
+      <li><span class="goal">緑の波</span>は遺物と出口。全て拾ってから出口へ。</li>
+      <li>PC: <b>WASD / 矢印</b>移動、<b>Shift</b>走る、<b>スペース</b>舌打ち、<br>
+          <b>E</b> 呼ぶ、<b>F</b>（押しっぱなし）息を止める。</li>
+    </ul>
+    <button class="small" id="howtoBack">もどる</button>
+  </div>
+
+  <!-- ポーズ -->
+  <div id="pauseScreen" class="overlay hidden">
+    <h2>一時停止</h2>
+    <button class="big" id="resumeBtn">つづける</button>
+    <button class="small" id="retryBtn">やりなおす</button>
+    <button class="small ghost" id="quitBtn">ステージ選択へ</button>
+  </div>
+
+  <!-- 死亡 -->
+  <div id="deadScreen" class="overlay hidden">
+    <h2 class="dead">捕食された</h2>
+    <p id="deadMsg" class="lead"></p>
+    <button class="big" id="againBtn">もう一度</button>
+    <button class="small ghost" id="deadQuitBtn">ステージ選択へ</button>
+  </div>
+
+  <!-- クリア -->
+  <div id="clearScreen" class="overlay hidden">
+    <h2 class="clear">脱出</h2>
+    <p id="clearMsg" class="lead"></p>
+    <button class="big" id="nextBtn">つぎへ</button>
+    <button class="small ghost" id="clearQuitBtn">ステージ選択へ</button>
+  </div>
+
+  <div id="flash"></div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
