@@ -44,9 +44,8 @@ jobs:
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git checkout main
-          git merge --no-ff "origin/$B" -m "Merge $B
-
-${{ steps.gate.outputs.reason }}"
+          git merge --no-ff "origin/$B" \
+            -m "Merge $B" -m '${{ steps.gate.outputs.reason }}'
           python3 tools/check_site.py
           git push origin main
           git push origin --delete "$B"
