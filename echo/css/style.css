@@ -1,0 +1,263 @@
+*{margin:0;padding:0;box-sizing:border-box;}
+
+html,body{
+  width:100%;
+  height:100%;
+  background:#000;
+  color:#cfd8e3;
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  overflow:hidden;
+  overscroll-behavior:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+#stage{
+  position:fixed;
+  inset:0;
+  background:#000;
+  touch-action:none;
+}
+
+#game{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+  background:#000;
+  touch-action:none;
+}
+
+/* ---------- HUD ---------- */
+
+#hud{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  padding:calc(env(safe-area-inset-top) + 14px) 16px 16px;
+  font-size:12px;
+  letter-spacing:.08em;
+}
+
+#hudLeft{
+  opacity:.45;
+  line-height:1.7;
+}
+
+#levelName{font-size:13px;}
+#relicInfo{font-size:11px;color:#e8c88a;}
+
+#pauseBtn{
+  position:absolute;
+  top:calc(env(safe-area-inset-top) + 10px);
+  right:14px;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04);
+  color:#9fb0c4;
+  font-size:13px;
+  letter-spacing:2px;
+  pointer-events:auto;
+}
+
+#clapMeter{
+  position:absolute;
+  left:16px;
+  right:16px;
+  bottom:calc(env(safe-area-inset-bottom) + 14px);
+  height:2px;
+  background:rgba(255,255,255,.07);
+  border-radius:2px;
+  overflow:hidden;
+}
+
+#clapFill{
+  height:100%;
+  width:100%;
+  background:rgba(180,210,255,.45);
+  transform-origin:left center;
+}
+
+#hint{
+  position:absolute;
+  left:24px;
+  right:24px;
+  bottom:calc(env(safe-area-inset-bottom) + 40px);
+  text-align:center;
+  font-size:12px;
+  line-height:1.9;
+  letter-spacing:.12em;
+  color:#aebfd4;
+  opacity:0;
+  transition:opacity 1.4s ease;
+}
+#hint.on{opacity:.6;transition:opacity .9s ease;}
+
+/* ---------- オーバーレイ ---------- */
+
+.overlay{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  padding:32px 24px calc(env(safe-area-inset-bottom) + 32px);
+  background:radial-gradient(circle at 50% 45%,rgba(10,14,20,.86),rgba(0,0,0,.97));
+  text-align:center;
+  z-index:10;
+  overflow-y:auto;
+  animation:fade .5s ease;
+}
+
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.hidden{display:none !important;}
+
+h1{
+  font-size:56px;
+  font-weight:300;
+  letter-spacing:.4em;
+  text-indent:.4em;
+  color:#e8eef7;
+  text-shadow:0 0 30px rgba(140,180,255,.35);
+}
+
+h2{
+  font-size:22px;
+  font-weight:400;
+  letter-spacing:.3em;
+  text-indent:.3em;
+  color:#dbe4f0;
+  margin-bottom:6px;
+}
+
+h2.dead{color:#ff6b6b;text-shadow:0 0 24px rgba(255,60,60,.4);}
+h2.clear{color:#f0d69a;text-shadow:0 0 24px rgba(240,200,120,.35);}
+
+.sub{
+  font-size:11px;
+  letter-spacing:.5em;
+  text-indent:.5em;
+  opacity:.35;
+  margin-top:-6px;
+}
+
+.lead{
+  font-size:13px;
+  line-height:2;
+  opacity:.55;
+  max-width:340px;
+}
+
+.note{font-size:11px;opacity:.4;letter-spacing:.05em;}
+.note.dim{opacity:.22;}
+
+button{
+  font-family:inherit;
+  cursor:pointer;
+  border:none;
+  background:none;
+  color:inherit;
+}
+
+button.big{
+  margin-top:10px;
+  padding:15px 46px;
+  border:1px solid rgba(190,215,255,.3);
+  border-radius:2px;
+  background:rgba(150,190,255,.06);
+  color:#e6eefb;
+  font-size:15px;
+  letter-spacing:.3em;
+  text-indent:.3em;
+  transition:background .2s,border-color .2s;
+}
+button.big:active{background:rgba(150,190,255,.16);border-color:rgba(190,215,255,.6);}
+
+button.small{
+  padding:11px 24px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:2px;
+  color:#9fb0c4;
+  font-size:12px;
+  letter-spacing:.18em;
+}
+button.small:active{background:rgba(255,255,255,.06);}
+button.ghost{border-color:transparent;opacity:.45;}
+
+/* ---------- ステージ選択 ---------- */
+
+#levelList{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  width:100%;
+  max-width:330px;
+  margin:6px 0 10px;
+}
+
+.lvBtn{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  padding:13px 16px;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:3px;
+  background:rgba(255,255,255,.02);
+  text-align:left;
+  color:#cfd8e3;
+}
+.lvBtn:active{background:rgba(255,255,255,.07);}
+
+.lvBtn .no{
+  font-size:11px;
+  opacity:.35;
+  min-width:26px;
+  letter-spacing:.1em;
+}
+.lvBtn .nm{font-size:14px;flex:1;}
+.lvBtn .dsc{display:block;font-size:10px;opacity:.35;margin-top:3px;letter-spacing:.05em;}
+.lvBtn .st{font-size:11px;opacity:.5;}
+.lvBtn.locked{opacity:.28;pointer-events:none;}
+.lvBtn.cleared .st{color:#e8c88a;}
+
+/* ---------- あそびかた ---------- */
+
+.howto{
+  list-style:none;
+  max-width:360px;
+  text-align:left;
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+  font-size:12.5px;
+  line-height:1.85;
+  opacity:.7;
+}
+.howto li{
+  padding-left:15px;
+  border-left:1px solid rgba(255,255,255,.13);
+}
+.howto b{color:#e6eefb;font-weight:600;}
+.red{color:#ff7b7b;}
+.gold{color:#f0d69a;}
+
+/* ---------- フラッシュ ---------- */
+
+#flash{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:#f00;
+  opacity:0;
+  z-index:9;
+  transition:opacity .7s ease;
+}
+#flash.on{opacity:.34;transition:none;}
