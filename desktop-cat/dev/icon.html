@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>icon</title>
+  <style>html, body { margin: 0; background: #222; }</style>
+</head>
+<body>
+<canvas id="c" width="512" height="512"></canvas>
+<script>
+/*
+ * Draws the app / tray icon: a stylised cat head. Deliberately hand-drawn
+ * rather than a downscaled render, because the procedural cat turns to mush
+ * below about 32px and a tray icon has to read at 16.
+ */
+function drawIcon(size, mono) {
+  const c = document.getElementById('c');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  const S = size / 100;         // work in a 100x100 design space
+  const px = (v) => v * S;
+
+  const fur = mono ? '#000000' : '#ab8c6a';
+  const furDark = mono ? '#000000' : '#7a6146';
+  const furLight = mono ? '#000000' : '#d0b898';
+  const inner = mono ? '#000000' : '#cf9b91';
+
+  ctx.save();
+  ctx.translate(size / 2, size / 2);
+
+  // Ears, drawn first so the skull overlaps their bases.
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(px(s * 10), px(-22));
+    ctx.lineTo(px(s * 30), px(-42));
+    ctx.lineTo(px(s * 37), px(-10));
+    ctx.closePath();
+    ctx.fillStyle = furDark;
+    ctx.fill();
+    if (!mono) {
+      ctx.beginPath();
+      ctx.moveTo(px(s * 16), px(-21));
+      ctx.lineTo(px(s * 28), px(-34));
+      ctx.lineTo(px(s * 32), px(-14));
+      ctx.closePath();
+      ctx.fillStyle = inner;
+      ctx.fill();
+    }
+  }
+
+  // Skull: wide cheeks, narrow chin.
+  ctx.beginPath();
+  ctx.moveTo(px(-34), px(-18));
+  ctx.bezierCurveTo(px(-40), px(10), px(-26), px(32), px(0), px(36));
+  ctx.bezierCurveTo(px(26), px(32), px(40), px(10), px(34), px(-18));
+  ctx.bezierCurveTo(px(24), px(-34), px(-24), px(-34), px(-34), px(-18));
+  ctx.closePath();
+  if (mono) {
+    ctx.fillStyle = '#000';
+  } else {
+    const g = ctx.createLinearGradient(0, px(-34), 0, px(36));
+    g.addColorStop(0, furLight);
+    g.addColorStop(0.55, fur);
+    g.addColorStop(1, furDark);
+    ctx.fillStyle = g;
+  }
+  ctx.fill();
+
+  if (!mono) {
+    // Muzzle.
+    ctx.beginPath();
+    ctx.ellipse(0, px(14), px(15), px(11), 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#e6dac9';
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Eyes.
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(px(s * 6), px(-2));
+      ctx.quadraticCurveTo(px(s * 15), px(-12), px(s * 24), px(-3));
+      ctx.quadraticCurveTo(px(s * 15), px(6), px(s * 6), px(-2));
+      ctx.closePath();
+      ctx.fillStyle = '#c9a63c';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(px(s * 15), px(-2.5), px(2.4), px(6.4), 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#120f0d';
+      ctx.fill();
+    }
+
+    // Nose and mouth.
+    ctx.beginPath();
+    ctx.moveTo(px(-4), px(7));
+    ctx.quadraticCurveTo(0, px(4), px(4), px(7));
+    ctx.quadraticCurveTo(0, px(13), px(-4), px(7));
+    ctx.fillStyle = '#c98d86';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(60,42,30,0.6)';
+    ctx.lineWidth = Math.max(1, px(1.4));
+    ctx.beginPath();
+    ctx.moveTo(0, px(12));
+    ctx.lineTo(0, px(17));
+    ctx.stroke();
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(0, px(17));
+      ctx.quadraticCurveTo(px(s * 4), px(21), px(s * 9), px(18));
+      ctx.stroke();
+    }
+  }
+
+  // Whiskers, in both variants: they make the silhouette read as "cat".
+  ctx.strokeStyle = mono ? '#000' : 'rgba(255,250,240,0.8)';
+  ctx.lineWidth = Math.max(1, px(1.5));
+  ctx.lineCap = 'round';
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const y = px(8 + i * 5);
+      ctx.beginPath();
+      ctx.moveTo(px(s * 13), y);
+      ctx.quadraticCurveTo(px(s * 29), y - px(3 - i * 3), px(s * 43), y + px(i * 2 - 1));
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+  return c.toDataURL('image/png');
+}
+window.drawIcon = drawIcon;
+</script>
+</body>
+</html>
