@@ -1,0 +1,10 @@
+# Windows の git は既定でチェックアウト時に改行を CRLF に変える（core.autocrlf=true）。
+# シェルスクリプトがそうなると bash が読めず、
+#   $'\r': command not found
+#   syntax error near unexpected token `$'in\r''
+# で落ちる。実際に Windows で go-online.sh がこれで動かなかった。
+# 実行されるファイルは、どの OS でチェックアウトしても LF のままにする。
+*.sh    text eol=lf
+*.py    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
