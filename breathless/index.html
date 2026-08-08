@@ -21,6 +21,7 @@
     <div id="hudLeft">
       <div id="levelName"></div>
       <div id="relicInfo"></div>
+      <div id="deathCount"></div>
     </div>
     <button id="pauseBtn" aria-label="ポーズ">| |</button>
 
@@ -34,6 +35,12 @@
 
     <!-- 舌打ちのクールタイム -->
     <div id="clickMeter"><div id="clickFill"></div></div>
+
+    <!-- 掴まれたときの振りほどき -->
+    <div id="grabWrap">
+      <div id="grabLabel">振りほどけ</div>
+      <div id="grabTrack"><div id="grabBar"></div></div>
+    </div>
 
     <!-- 行動ボタン -->
     <div id="acts">
@@ -61,6 +68,7 @@
     <h2>ステージ選択</h2>
     <div id="levelList"></div>
     <button class="small" id="howtoBtn">あそびかた</button>
+    <button class="small" id="settingsBtn">設定</button>
     <button class="small ghost" id="resetBtn">記録を消す</button>
   </div>
 
@@ -82,17 +90,58 @@
       <li><span class="beast">橙の波</span>は化け物。触れたら死。<br>
           <b>時々立ち止まって耳を澄まし、完全に無音になります。</b></li>
       <li><span class="goal">緑の波</span>は遺物と出口。全て拾ってから出口へ。</li>
+      <li>掴まれても即死しません。<b>画面をすばやく振れば振りほどけます。</b></li>
+      <li>安全な場所を通ると<b>自動で記録</b>されます。<br>
+          死んでも、描いた地図と拾った遺物はそのまま残ります。</li>
       <li>PC: <b>WASD / 矢印</b>移動、<b>Shift</b>走る、<b>スペース</b>舌打ち、<br>
           <b>E</b> 呼ぶ、<b>F</b>（押しっぱなし）息を止める。</li>
     </ul>
     <button class="small" id="howtoBack">もどる</button>
   </div>
 
+  <!-- 設定 -->
+  <div id="settingsScreen" class="overlay hidden">
+    <h2>設定</h2>
+    <div class="setts">
+      <label class="sett">
+        <span>明るさ</span>
+        <input type="range" id="setBright" min="60" max="180" step="5">
+        <b id="brightVal"></b>
+      </label>
+      <label class="sett">
+        <span>色づかい</span>
+        <select id="setPalette">
+          <option value="0">標準</option>
+          <option value="1">色覚対応（青・黄・白）</option>
+        </select>
+      </label>
+      <label class="sett">
+        <span>危険の方向を光らせる</span>
+        <input type="checkbox" id="setDanger">
+      </label>
+      <label class="sett">
+        <span>チェックポイント</span>
+        <input type="checkbox" id="setCheck">
+      </label>
+      <label class="sett">
+        <span>掴まれても振りほどける</span>
+        <input type="checkbox" id="setGrab">
+      </label>
+      <label class="sett">
+        <span>振動</span>
+        <input type="checkbox" id="setVibe">
+      </label>
+    </div>
+    <p class="note dim">下3つを全て切ると、原作に近い一発死の緊張になります。</p>
+    <button class="small" id="setBack">もどる</button>
+  </div>
+
   <!-- ポーズ -->
   <div id="pauseScreen" class="overlay hidden">
     <h2>一時停止</h2>
     <button class="big" id="resumeBtn">つづける</button>
-    <button class="small" id="retryBtn">やりなおす</button>
+    <button class="small" id="retryBtn">最初からやりなおす</button>
+    <button class="small" id="pauseSetBtn">設定</button>
     <button class="small ghost" id="quitBtn">ステージ選択へ</button>
   </div>
 

@@ -48,6 +48,48 @@ html,body{
 
 #levelName{font-size:13px;}
 #relicInfo{font-size:11px;color:#8ff0b8;}
+#deathCount{font-size:11px;color:#ff9a6b;opacity:0;transition:opacity .4s;}
+#deathCount.on{opacity:.8;}
+
+/* 掴まれたときの振りほどきゲージ */
+#grabWrap{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:190px;
+  text-align:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .12s;
+}
+#grabWrap.on{opacity:1;}
+#grabLabel{
+  font-size:15px;
+  letter-spacing:.35em;
+  text-indent:.35em;
+  color:#ffb08a;
+  margin-bottom:10px;
+  animation:shake .16s infinite;
+}
+@keyframes shake{
+  0%{transform:translateX(-3px)}
+  50%{transform:translateX(3px)}
+  100%{transform:translateX(-3px)}
+}
+#grabTrack{
+  height:4px;
+  border-radius:3px;
+  background:rgba(255,255,255,.1);
+  overflow:hidden;
+}
+#grabBar{
+  height:100%;
+  width:100%;
+  background:rgba(255,150,110,.9);
+  transform:scaleX(0);
+  transform-origin:left center;
+}
 
 #pauseBtn{
   position:absolute;
@@ -301,6 +343,48 @@ button.ghost{border-color:transparent;opacity:.45;}
 .lvBtn .st{font-size:11px;opacity:.5;}
 .lvBtn.locked{opacity:.28;pointer-events:none;}
 .lvBtn.cleared .st{color:#8ff0b8;}
+
+/* ---------- 設定 ---------- */
+
+.setts{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  width:100%;
+  max-width:340px;
+  margin:4px 0 8px;
+}
+
+.sett{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:13px 4px;
+  font-size:12.5px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.sett span{flex:1;text-align:left;opacity:.75;}
+.sett b{font-size:11px;opacity:.5;min-width:38px;text-align:right;}
+
+.sett input[type=range]{
+  width:120px;
+  accent-color:#6fd8e8;
+  background:transparent;
+}
+.sett input[type=checkbox]{
+  width:22px;
+  height:22px;
+  accent-color:#6fd8e8;
+}
+.sett select{
+  font-family:inherit;
+  font-size:12px;
+  padding:7px 8px;
+  color:#cfd8e3;
+  background:#111820;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:3px;
+}
 
 /* ---------- あそびかた ---------- */
 

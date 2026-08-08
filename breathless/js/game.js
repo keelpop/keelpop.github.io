@@ -10,7 +10,7 @@
 
   var TILE = 32;              // 1マスの内部解像度(px)
   var SCALE = TILE / 24;      // 線や点の太さをTILEに追従させる
-  var VIEW_TILES = 13;        // 画面の縦に収まるマス数
+  var VIEW_TILES = 9.5;       // 画面の短辺に収まるマス数（縦持ちでは横9.5マス）
   var DT = 1 / 60;
   var MAXR = 5000;            // 音の粒子の最大数
 
@@ -46,12 +46,30 @@
 
   /* 波の種類 */
   var T_SELF = 0, T_BEAST = 1, T_GOAL = 2, T_HEART = 3;
-  var COLORS = [[150, 230, 255], [255, 110, 45], [120, 255, 170], [185, 135, 255]];
+  /* 0=標準 / 1=色覚対応（青・黄・白 ― 赤緑や第2色覚でも見分けられる組み合わせ） */
+  var PALETTES = [
+    [[150, 230, 255], [255, 110, 45], [120, 255, 170], [185, 135, 255]],
+    [[ 90, 190, 255], [255, 190, 20], [255, 255, 255], [190, 160, 255]]
+  ];
+  var ETCH_COLORS = ['rgba(96,168,196,', 'rgba(112,150,190,'];
+  var COLORS = PALETTES[0];
   /* 記憶の地図に刻むのは自分の探査音と目印だけ。化け物と鼓動は残らない */
   var ETCHES = [true, false, true, false];
   /* 鼓動は「体から漏れた音」なので、探査音より控えめに描く */
   var BRIGHT = [1, 1, 1, 0.5];
-  var ETCH_COLOR = 'rgba(96,168,196,';
+  var ETCH_COLOR = ETCH_COLORS[0];
+  var BR = 1;                 // 明るさ倍率（設定から）
+
+  var SET_KEY = 'breathless_settings_v1';
+  var settings = {
+    bright: 100, palette: 0,
+    danger: true, checkpoint: true, grab: true, vibe: true
+  };
+
+  var CHECK_SAFE_DIST = 7;    // この距離に化け物がいなければ安全とみなす
+  var GRAB_TIME = 0.95;       // 振りほどきの猶予(秒)
+  var GRAB_NEED = 230;        // 振りほどきに必要な指の移動量(CSS px)
+  var RESPAWN_GRACE = 2.2;    // 復帰直後の無敵時間
 
   var BOUNCE_COST = 0.22;
   var STORE_KEY = 'breathless_progress_v1';
@@ -66,11 +84,13 @@
   var elClickFill = $('clickFill'), elFlash = $('flash'), elHint = $('hint');
   var elBreath = $('breathBar'), elHeartDot = $('heartDot');
   var elCallBtn = $('callBtn'), elHoldBtn = $('holdBtn');
+  var elDeath = $('deathCount'), elGrabWrap = $('grabWrap'), elGrabBar = $('grabBar');
   var hintTimer = null, beatTimer = null;
 
   var screens = {
     title: $('titleScreen'), select: $('selectScreen'), howto: $('howtoScreen'),
-    pause: $('pauseScreen'), dead: $('deadScreen'), clear: $('clearScreen')
+    pause: $('pauseScreen'), dead: $('deadScreen'), clear: $('clearScreen'),
+    settings: $('settingsScreen')
   };
 
   /* ---------------- 状態 ---------------- */
@@ -101,6 +121,13 @@
   var deathCause = '', elapsed = 0;
   var lastFlowOk = false;
 
+  /* 死んで最初からやり直す苦行をなくすための復帰点 */
+  var cp = { x: 0, y: 0 };
+  var cpT = 0, deaths = 0, grace = 0;
+
+  /* 掴まれた状態 ― 即死ではなく、振りほどく猶予を挟む */
+  var grab = { on: false, t: 0, got: 0, beast: null };
+
   /* 音の粒子 */
   var pX = new Float32Array(MAXR), pY = new Float32Array(MAXR);
   var pVX = new Float32Array(MAXR), pVY = new Float32Array(MAXR);
@@ -125,9 +152,11 @@
   var live = document.createElement('canvas'), lctx = live.getContext('2d');
   var memFadeT = 0;
 
-  /* 周辺減光は毎フレーム作ると重いので焼いておく */
+  /* 周辺減光と危険グローは毎フレーム作ると重いので焼いておく */
   var vig = document.createElement('canvas'), vctx = vig.getContext('2d');
   var vigKey = '';
+  var dang = document.createElement('canvas'), dctx = dang.getContext('2d');
+  var dangerKey = '';
 
   /* いま画面に映っている世界座標の矩形。live の更新はここだけに絞る */
   var view = { x: 0, y: 0, w: 0, h: 0 };
@@ -163,11 +192,36 @@
     } catch (e) { unlocked = 1; }
   }
 
+  function loadSettings() {
+    try {
+      var raw = localStorage.getItem(SET_KEY);
+      if (raw) {
+        var o = JSON.parse(raw);
+        for (var k in settings) if (o[k] !== undefined) settings[k] = o[k];
+      }
+    } catch (e) {}
+    applySettings();
+  }
+
+  function saveSettings() {
+    try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {}
+    applySettings();
+  }
+
+  function applySettings() {
+    BR = settings.bright / 100;
+    COLORS = PALETTES[settings.palette] || PALETTES[0];
+    ETCH_COLOR = ETCH_COLORS[settings.palette] || ETCH_COLORS[0];
+    vigKey = '';        // 明るさが変わるので焼き直す
+    dangerKey = '';
+  }
+
   function saveProgress() {
     try { localStorage.setItem(STORE_KEY, String(unlocked)); } catch (e) {}
   }
 
   function vibrate(p) {
+    if (!settings.vibe) return;
     if (navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} }
   }
 
@@ -215,6 +269,9 @@
     player.alive = true;
 
     fear = 0; breath = 1; gaspLock = 0; heartT = 0;
+    cp.x = player.x; cp.y = player.y;
+    cpT = 0; deaths = 0; grace = RESPAWN_GRACE;
+    endGrab();
     setHolding(false);
 
     flow = new Int32Array(W * H);
@@ -236,6 +293,7 @@
 
     elLevelName.textContent = (idx + 1) + '. ' + L.name;
     updateRelicHud();
+    updateDeathHud();
 
     elHint.textContent = L.hint;
     elHint.classList.add('on');
@@ -477,9 +535,62 @@
   }
 
   function checkContact(b) {
-    if (player.alive && Math.hypot(b.x - player.x, b.y - player.y) < DEATH_DIST) {
-      die(b.alertT > 0 ? '追いつかれた。' : '暗闇の中で、何かに触れた。');
+    if (!player.alive || grab.on || grace > 0) return;
+    if (Math.hypot(b.x - player.x, b.y - player.y) >= DEATH_DIST) return;
+
+    var cause = b.alertT > 0 ? '追いつかれた。' : '暗闇の中で、何かに触れた。';
+    if (!settings.grab) { die(cause); return; }
+
+    /* 一発死にせず、振りほどく猶予を与える */
+    grab.on = true;
+    grab.t = GRAB_TIME;
+    grab.got = 0;
+    grab.beast = b;
+    deathCause = cause;
+    setHolding(false);
+    SFX.growl(1, panOf(b.x));
+    vibrate([120, 60, 120, 60, 120]);
+    elGrabWrap.classList.add('on');
+  }
+
+  function updateGrab(dt) {
+    if (!grab.on) return;
+
+    var b = grab.beast;
+    if (b) {
+      /* 掴んでいる間、化け物は音を漏らし続ける */
+      b.stepT = 0;
+      emit(b.x, b.y, { n: 6, spd: 7, life: 0.4, hear: 0 }, T_BEAST);
     }
+
+    grab.t -= dt;
+    elGrabBar.style.transform = 'scaleX(' + clamp(grab.got / GRAB_NEED, 0, 1).toFixed(3) + ')';
+
+    if (grab.got >= GRAB_NEED) {
+      /* 振りほどいた ― 化け物を突き放し、少しのあいだ無敵 */
+      endGrab();
+      grace = RESPAWN_GRACE * 0.7;
+      if (b) {
+        var a = Math.atan2(b.y - player.y, b.x - player.x);
+        moveEntity(b, Math.cos(a) * 1.1, Math.sin(a) * 1.1, 0.32);
+        b.alertT = 0;
+        b.listenT = 2.4;
+      }
+      emit(player.x, player.y, SND.gasp, T_SELF);
+      SFX.gasp();
+      fear = 1;
+      breath = Math.min(breath, 0.35);
+      vibrate([40, 40, 40]);
+      return;
+    }
+
+    if (grab.t <= 0) { endGrab(); die(deathCause); }
+  }
+
+  function endGrab() {
+    grab.on = false;
+    grab.beast = null;
+    elGrabWrap.classList.remove('on');
   }
 
   /* ---------------- 体（恐怖・鼓動・息） ---------------- */
@@ -559,7 +670,18 @@
   /* ---------------- プレイヤー ---------------- */
 
   function updatePlayer(dt) {
-    if (!player.alive) return false;
+    if (!player.alive || grab.on) return false;
+    if (grace > 0) grace -= dt;
+
+    /* 化け物が近くにいない場所を通ったら、そこを復帰点として憶えておく */
+    cpT -= dt;
+    if (cpT <= 0) {
+      cpT = 0.4;
+      if (Math.hypot(player.x - cp.x, player.y - cp.y) > 2.5 &&
+          nearestBeast().d > CHECK_SAFE_DIST) {
+        cp.x = player.x; cp.y = player.y;
+      }
+    }
 
     var ix = stick.mx, iy = stick.my;
     var mag = Math.hypot(ix, iy);
@@ -653,8 +775,9 @@
 
   function computeView() {
     var cw = cv.width, ch = cv.height;
-    var vh = VIEW_TILES * TILE;
-    var vw = vh * (cw / ch);
+    /* 短辺に VIEW_TILES マスが収まる倍率。縦持ちでは縦に長く見える */
+    var px = Math.min(cw, ch) / (VIEW_TILES * TILE);
+    var vw = cw / px, vh = ch / px;
     var fit = Math.min(1, mem.width / vw, mem.height / vh);
     vw *= fit; vh *= fit;
     view.w = vw; view.h = vh;
@@ -690,7 +813,7 @@
     }
     /* 加算合成だと何度も当たった壁が白く飛ぶので、上書き合成で色に収束させる */
     mctx.globalCompositeOperation = 'source-over';
-    mctx.strokeStyle = ETCH_COLOR + '0.16)';
+    mctx.strokeStyle = ETCH_COLOR + (0.16 * BR).toFixed(3) + ')';
     mctx.lineWidth = 2.2 * SCALE;
     mctx.lineCap = 'butt';
     mctx.beginPath();
@@ -723,7 +846,7 @@
         var bi = ty * BUCKETS + b;
         var n = dotLen[bi];
         if (n === 0) continue;
-        var a = (0.16 + b * 0.26) * BRIGHT[ty];
+        var a = (0.16 + b * 0.26) * BRIGHT[ty] * BR;
         var sz = (1.3 + b * 0.5) * SCALE;
         lctx.fillStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',' + a.toFixed(3) + ')';
         var buf = dotBuf[bi];
@@ -743,7 +866,7 @@
       if (mn2 === 0) continue;
       var c2 = COLORS[t2], mb2 = markBuf[t2];
       lctx.strokeStyle = 'rgba(' + c2[0] + ',' + c2[1] + ',' + c2[2] + ',' +
-                         (0.42 * BRIGHT[t2]).toFixed(3) + ')';
+                         (0.42 * BRIGHT[t2] * BR).toFixed(3) + ')';
       lctx.beginPath();
       for (var m2 = 0; m2 < mn2; m2 += 4) {
         lctx.moveTo(mb2[m2] * TILE, mb2[m2 + 1] * TILE);
@@ -768,7 +891,7 @@
   }
 
   function buildVignette(cw, ch, tight) {
-    var key = cw + 'x' + ch + (tight ? 'T' : 'N');
+    var key = cw + 'x' + ch + (tight ? 'T' : 'N') + BR.toFixed(2);
     if (key === vigKey) return;
     vigKey = key;
     vig.width = cw; vig.height = ch;
@@ -776,10 +899,57 @@
     var g = vctx.createRadialGradient(cw / 2, ch / 2, inner,
                                       cw / 2, ch / 2, Math.max(cw, ch) * 0.72);
     g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, 'rgba(0,0,0,0.80)');
+    g.addColorStop(1, 'rgba(0,0,0,' + clamp(0.80 / BR, 0.42, 0.92).toFixed(3) + ')');
     vctx.clearRect(0, 0, cw, ch);
     vctx.fillStyle = g;
     vctx.fillRect(0, 0, cw, ch);
+  }
+
+  /* 危険の方向を画面の縁に滲ませる。
+     位置までは教えないが「どっちから来ているか」だけは常にわかるようにする。
+     ＝ 何も分からないまま殺される事故を減らすための救済 */
+  function buildDangerSprite(r) {
+    var key = r + '|' + settings.palette;
+    if (key === dangerKey) return;
+    dangerKey = key;
+    dang.width = dang.height = r * 2;
+    var c = COLORS[T_BEAST];
+    var g = dctx.createRadialGradient(r, r, 0, r, r, r);
+    g.addColorStop(0, 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',1)');
+    g.addColorStop(0.45, 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0.28)');
+    g.addColorStop(1, 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0)');
+    dctx.clearRect(0, 0, r * 2, r * 2);
+    dctx.fillStyle = g;
+    dctx.fillRect(0, 0, r * 2, r * 2);
+  }
+
+  function drawDanger(cw, ch) {
+    if (!settings.danger || !player.alive) return;
+    var n = nearestBeast();
+    if (!n.b || n.d > 13) return;
+
+    var r = Math.round(Math.min(cw, ch) * 0.42);
+    buildDangerSprite(r);
+
+    var prox = clamp(1 - n.d / 13, 0, 1);
+    var a = (n.b.alertT > 0 ? 0.42 : 0.20) * prox * prox;
+    if (grab.on) a = 0.6;
+
+    /* カメラが地図の端で止まっているとプレイヤーは画面中央にいないので、
+       画面中央ではなく実際の自分の位置を基準に方向を取る */
+    var sc = cw / view.w;
+    var psx = (player.x * TILE - view.x) * sc;
+    var psy = (player.y * TILE - view.y) * sc;
+
+    var ang = Math.atan2(n.b.y - player.y, n.b.x - player.x);
+    var ex = psx + Math.cos(ang) * cw * 0.62;
+    var ey = psy + Math.sin(ang) * ch * 0.58;
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = a;
+    ctx.drawImage(dang, ex - r, ey - r);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   function drawScreen() {
@@ -794,6 +964,8 @@
     /* 周辺減光 ― 息を止めると視界が締まる */
     buildVignette(cw, ch, holding);
     ctx.drawImage(vig, 0, 0);
+
+    drawDanger(cw, ch);
 
     if (mode === 'play' && stick.active && stick.pointerId !== null) {
       var s = dpr;
@@ -817,6 +989,8 @@
     player.alive = false;
     deathCause = cause;
     mode = 'dead';
+    deaths++;
+    endGrab();
     setHolding(false);
     SFX.death();
     vibrate([90, 50, 200]);
@@ -825,12 +999,47 @@
     elFlash.classList.add('on');
     setTimeout(function () { elFlash.classList.remove('on'); }, 60);
 
+    /* チェックポイントがあるなら、地図も遺物も残したまま復帰する。
+       ステージ丸ごとやり直させないのが、この作りでいちばん効く改善 */
+    if (settings.checkpoint) {
+      setTimeout(function () {
+        if (mode !== 'dead') return;
+        respawn();
+      }, 1250);
+      return;
+    }
+
     setTimeout(function () {
       if (mode !== 'dead') return;
       $('deadMsg').textContent = deathCause;
       elHud.classList.add('hidden');
       show('dead');
     }, 1100);
+  }
+
+  function respawn() {
+    player.x = cp.x; player.y = cp.y;
+    player.dx = 0; player.dy = -1;
+    player.stepAcc = 0; player.crumbAcc = 0;
+    player.alive = true;
+    fear = 0; breath = 1; gaspLock = 0; heartT = 0;
+    grace = RESPAWN_GRACE;
+    mode = 'play';
+
+    /* 復帰地点の目の前で待ち構えられないよう、追跡は一度切る */
+    for (var i = 0; i < beasts.length; i++) {
+      beasts[i].alertT = 0;
+      beasts[i].listenT = 1.2 + Math.random();
+    }
+
+    updateDeathHud();
+    emit(player.x, player.y, SND.open, T_SELF);
+  }
+
+  function updateDeathHud() {
+    if (deaths === 0) { elDeath.classList.remove('on'); elDeath.textContent = ''; return; }
+    elDeath.textContent = '死 ×' + deaths;
+    elDeath.classList.add('on');
   }
 
   function win() {
@@ -883,7 +1092,7 @@
   var stick = {
     active: false, pointerId: null,
     ox: 0, oy: 0, mx: 0, my: 0, radius: 64,
-    downT: 0, moved: 0
+    downT: 0, moved: 0, lastX: 0, lastY: 0
   };
   var keys = { up: 0, down: 0, left: 0, right: 0, shift: false };
 
@@ -902,6 +1111,7 @@
     stick.mx = 0; stick.my = 0;
     stick.downT = performance.now();
     stick.moved = 0;
+    stick.lastX = p.x; stick.lastY = p.y;
     try { cv.setPointerCapture(e.pointerId); } catch (err) {}
   });
 
@@ -909,6 +1119,10 @@
     if (stick.pointerId !== e.pointerId) return;
     e.preventDefault();
     var p = pointerPos(e);
+    /* 掴まれている間は、指を振った量がそのまま脱出ゲージになる */
+    if (grab.on) grab.got += Math.hypot(p.x - stick.lastX, p.y - stick.lastY);
+    stick.lastX = p.x; stick.lastY = p.y;
+
     var dx = p.x - stick.ox, dy = p.y - stick.oy;
     var d = Math.hypot(dx, dy);
     stick.moved = Math.max(stick.moved, d);
@@ -950,10 +1164,10 @@
       return;
     }
     var k = e.key.toLowerCase();
-    if (k === 'w' || k === 'arrowup') keys.up = 1;
-    else if (k === 's' || k === 'arrowdown') keys.down = 1;
-    else if (k === 'a' || k === 'arrowleft') keys.left = 1;
-    else if (k === 'd' || k === 'arrowright') keys.right = 1;
+    if (k === 'w' || k === 'arrowup') { keys.up = 1; if (grab.on) grab.got += 55; }
+    else if (k === 's' || k === 'arrowdown') { keys.down = 1; if (grab.on) grab.got += 55; }
+    else if (k === 'a' || k === 'arrowleft') { keys.left = 1; if (grab.on) grab.got += 55; }
+    else if (k === 'd' || k === 'arrowright') { keys.right = 1; if (grab.on) grab.got += 55; }
     else if (k === 'shift') keys.shift = true;
     else if (k === ' ') doClick();
     else if (k === 'e') doCall();
@@ -1047,6 +1261,44 @@
     }
   }
 
+  /* ---------------- 設定画面 ---------------- */
+
+  var setReturn = 'select';
+
+  function openSettings(from) {
+    setReturn = from;
+    $('setBright').value = settings.bright;
+    $('brightVal').textContent = settings.bright + '%';
+    $('setPalette').value = String(settings.palette);
+    $('setDanger').checked = !!settings.danger;
+    $('setCheck').checked = !!settings.checkpoint;
+    $('setGrab').checked = !!settings.grab;
+    $('setVibe').checked = !!settings.vibe;
+    mode = 'settings';
+    show('settings');
+  }
+
+  $('setBright').addEventListener('input', function () {
+    settings.bright = parseInt(this.value, 10);
+    $('brightVal').textContent = settings.bright + '%';
+    saveSettings();
+  });
+  $('setPalette').addEventListener('change', function () {
+    settings.palette = parseInt(this.value, 10);
+    saveSettings();
+  });
+  $('setDanger').addEventListener('change', function () { settings.danger = this.checked; saveSettings(); });
+  $('setCheck').addEventListener('change', function () { settings.checkpoint = this.checked; saveSettings(); });
+  $('setGrab').addEventListener('change', function () { settings.grab = this.checked; saveSettings(); });
+  $('setVibe').addEventListener('change', function () { settings.vibe = this.checked; saveSettings(); });
+
+  $('settingsBtn').addEventListener('click', function () { openSettings('select'); });
+  $('pauseSetBtn').addEventListener('click', function () { openSettings('pause'); });
+  $('setBack').addEventListener('click', function () {
+    if (setReturn === 'pause') { mode = 'pause'; show('pause'); }
+    else toSelect();
+  });
+
   $('startBtn').addEventListener('click', function () {
     SFX.init();
     var stage = document.getElementById('stage');
@@ -1119,6 +1371,7 @@
       if (mode === 'play') {
         elapsed += DT;
         applyKeyboard();
+        updateGrab(DT);
         var running = updatePlayer(DT);
         updateBody(DT, running);
         updateBeasts(DT);
@@ -1138,6 +1391,7 @@
   /* ---------------- 起動 ---------------- */
 
   loadProgress();
+  loadSettings();
   resize();
   show('title');
   requestAnimationFrame(frame);
