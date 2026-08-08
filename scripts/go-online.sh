@@ -24,12 +24,40 @@ say()  { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ng()   { printf '\n\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
 
 [ -n "$TARGET" ] || ng "使い方: bash go-online.sh ~/path/to/プロジェクト"
+
+# Windows のパス（C:\Users\... や C:/Users/...）を、いま動いている bash に合わせて直す。
+# Git Bash は /c/... 、WSL は /mnt/c/... を使う。ここを変換しないと
+# 「そのフォルダが見つかりません」で必ず止まる。
+case "$TARGET" in
+  [A-Za-z]:[\\/]*)
+    _drive=$(printf '%s' "${TARGET%%:*}" | tr '[:upper:]' '[:lower:]')
+    _rest="${TARGET#*:}"
+    _rest="${_rest//\\//}"
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+      TARGET="/mnt/${_drive}${_rest}"
+    else
+      TARGET="/${_drive}${_rest}"
+    fi
+    echo "Windows のパスを $TARGET として扱います。"
+    ;;
+esac
+
 [ -d "$TARGET" ] || ng "そのフォルダが見つかりません: $TARGET"
 TARGET="$(cd "$TARGET" && pwd)"
 [ -n "$REPO_NAME" ] || REPO_NAME="$(basename "$TARGET" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9._-')"
+[ -n "$REPO_NAME" ] || ng "フォルダ名から使えるリポジトリ名が作れませんでした。第2引数で指定してください（例: abyss-library）。"
 
-command -v git >/dev/null    || ng "git が見つかりません。"
-command -v python3 >/dev/null || ng "python3 が見つかりません。"
+command -v git >/dev/null || ng "git が見つかりません。https://git-scm.com/download/win から入れてください。"
+
+# Windows では python3 という名前が無いことが多い。python / py も探す。
+PY=""
+for c in python3 python py; do
+  command -v "$c" >/dev/null 2>&1 || continue
+  "$c" -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1 || continue
+  PY="$c"; break
+done
+[ -n "$PY" ] || ng "Python 3 が見つかりません。https://www.python.org/downloads/ から入れて、
+インストール時に 'Add python.exe to PATH' にチェックを入れてください。"
 
 say "== $TARGET を GitHub の非公開リポジトリ '$REPO_NAME' に上げます"
 
@@ -41,7 +69,7 @@ done
 
 # ---------------------------------------------------------------- 1. 秘密
 say "-- 1/6 外に出してはいけないものが無いか調べます"
-if ! python3 "$KIT_DIR/tools/scan_secrets.py" "$TARGET"; then
+if ! "$PY" "$KIT_DIR/tools/scan_secrets.py" "$TARGET"; then
   cat >&2 <<'STOP'
 
 ここで止めました。まだ何も送信していません。
