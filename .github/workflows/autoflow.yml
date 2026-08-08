@@ -63,7 +63,9 @@ jobs:
                  "$B" '${{ steps.gate.outputs.reason }}' \
                  "$(git log --format='- %s' "origin/main..origin/$B" | head -20)")
           if [ -n "$EXISTING" ]; then
-            gh issue comment "$EXISTING" --body "$BODY"
+            # 既に立っているなら黙る。push のたびにコメントすると、
+            # 作業中のブランチひとつで通知が何十件も出る。
+            echo "Issue #$EXISTING で既に知らせているので何もしません"
           else
             gh issue create --title "$TITLE" --body "$BODY" --label needs-human || \
               gh issue create --title "$TITLE" --body "$BODY"
