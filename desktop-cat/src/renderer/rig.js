@@ -86,22 +86,22 @@
 
   const POSES = {
     stand: {
-      spine: [P(0, 37.0), P(13, 38.5), P(26, 38.5), P(39, 37.5), P(52, 36.0), P(59, 44.0)],
-      head: P(68, 54.0),
-      headAngle: -0.10,
-      frontFoot: 54, frontFootU: 0,
-      hindFoot: -2, hindFootU: 0,
+      spine: [P(0, 35.0), P(13, 37.2), P(26, 39.7), P(39, 41.1), P(52, 42.3), P(59, 43.5)],
+      head: P(66, 48.5),
+      headAngle: 0.04,
+      frontFoot: 50, frontFootU: 0,
+      hindFoot: 14, hindFootU: 0,
       legMode: 'ik',
-      tail: { curl: -0.08, lift: 0.6, front: false },
+      tail: { curl: 0.06, lift: -0.15, front: false },
       ear: 0,
       squash: 1,
     },
     walk: {
-      spine: [P(0, 36.0), P(13, 37.6), P(26, 37.6), P(39, 36.6), P(52, 35.2), P(59, 43.0)],
-      head: P(68, 52.5),
-      headAngle: -0.06,
-      frontFoot: 54, frontFootU: 0,
-      hindFoot: -2, hindFootU: 0,
+      spine: [P(0, 34.0), P(13, 36.2), P(26, 38.7), P(39, 40.1), P(52, 41.3), P(59, 42.5)],
+      head: P(66, 47.0),
+      headAngle: 0.06,
+      frontFoot: 50, frontFootU: 0,
+      hindFoot: 14, hindFootU: 0,
       legMode: 'ik',
       tail: { curl: -0.04, lift: 0.8, front: false },
       ear: 0,
@@ -109,8 +109,8 @@
     },
     sit: {
       // Rear on the floor, spine climbing steeply, front legs nearly straight.
-      spine: [P(0, 13.0), P(3.5, 20.0), P(8, 26.5), P(13, 32.0), P(18, 37.0), P(22, 42.0)],
-      head: P(29, 51.5),
+      spine: [P(0, 11.0), P(3.5, 18.0), P(8, 24.5), P(13, 30.0), P(18, 35.0), P(22, 40.0)],
+      head: P(29, 49.5),
       headAngle: -0.04,
       frontFoot: 26, frontFootU: 0,
       hindFoot: 20, hindFootU: 0,
@@ -120,8 +120,8 @@
       squash: 1,
     },
     loaf: {
-      spine: [P(0, 16.0), P(12, 19.0), P(24, 20.0), P(36, 20.0), P(47, 19.0), P(53, 23.0)],
-      head: P(61, 33.0),
+      spine: [P(0, 14.0), P(12, 17.0), P(24, 18.0), P(36, 18.0), P(47, 17.0), P(53, 21.0)],
+      head: P(61, 31.0),
       headAngle: -0.02,
       frontFoot: 60, frontFootU: 0,
       hindFoot: 8, hindFootU: 0,
@@ -131,8 +131,8 @@
       squash: 1.03,
     },
     sleep: {
-      spine: [P(4, 15.0), P(15, 21.0), P(26, 23.0), P(36, 21.0), P(44, 18.0), P(48, 18.0)],
-      head: P(53, 16.0),
+      spine: [P(4, 13.0), P(15, 19.0), P(26, 21.0), P(36, 19.0), P(44, 16.0), P(48, 16.0)],
+      head: P(53, 14.0),
       headAngle: 0.6,
       frontFoot: 58, frontFootU: 0,
       hindFoot: 8, hindFootU: 0,
@@ -485,8 +485,9 @@
         const attach = leg.front ? shoulder : hip;
         // Near legs sit slightly forward of the far ones (a hint of perspective).
         const lateral = (leg.near ? 1 : -1) * 3.2 * this.scale;
+        const drop = (leg.front ? 3.0 : 6.0) * this.scale;
         leg.hipX = attach.x + lateral * 0.4 * this.dir;
-        leg.hipY = attach.y + (leg.near ? 1.0 : -2.0) * this.scale;
+        leg.hipY = attach.y + drop + (leg.near ? 1.0 : -2.0) * this.scale;
 
         const stanceF = leg.front ? this.pose.frontFoot : this.pose.hindFoot;
         const stanceU = leg.front ? this.pose.frontFootU : this.pose.hindFootU;
@@ -538,8 +539,8 @@
           fy = leg.hipY - Math.abs(Math.sin(ang)) * reach * 0.75 - 6 * this.scale * swing;
         }
 
-        const la = (leg.front ? 20.0 : 22.0) * this.scale;
-        const lb = (leg.front ? 19.0 : 21.0) * this.scale;
+        const la = (leg.front ? 21.0 : 22.0) * this.scale;
+        const lb = (leg.front ? 20.0 : 21.0) * this.scale;
         // Cat elbows point back, stifles point forward.
         const bend = (leg.front ? 1 : -1) * (this.dir >= 0 ? 1 : -1);
         const ik = solveIK(leg.hipX, leg.hipY, fx, fy, la, lb, bend);

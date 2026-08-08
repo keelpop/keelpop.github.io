@@ -126,9 +126,20 @@
   }
 
   // Body cross-section profile, per spine node: distance above / below the
-  // centreline. Deep chest, tucked waist, full rump.
-  const R_UP = [14.0, 13.8, 13.0, 12.4, 11.6, 8.0];
-  const R_DOWN = [13.4, 9.6, 10.4, 14.4, 14.2, 9.2];
+  // centreline, measured off the photographic side view.
+  //
+  // R_DOWN is the *trunk* underline only. The haunch and shoulder masses hang
+  // much lower than the belly, but they must not go in here: this profile is
+  // smoothed along the spine, so a deep value at the hip drags the whole belly
+  // line down with it and the animal flattens into a slab on stumpy legs. The
+  // limb roots carry that mass instead -- see the upper-limb widths in #legs.
+  //
+  // These are ~15% under the raw measurements on purpose: the Catmull-Rom pass
+  // that turns them into a silhouette overshoots between control values, so
+  // feeding the measured numbers in straight produces a trunk noticeably deeper
+  // than the reference, which in turn makes the legs look stumpy.
+  const R_UP = [11.9, 11.7, 11.1, 10.5, 9.9, 6.8];
+  const R_DOWN = [10.2, 9.7, 12.5, 15.0, 12.8, 8.5];
 
   const OUTLINE_N = 22;
 
@@ -243,9 +254,9 @@
   // 1 = looking back over the shoulder at you. Local units, x forward, y up.
 
   const HEAD_PROFILE = [
-    [-9.5, 5.5], [-5.5, 10.0], [-0.5, 11.0], [4.5, 10.0], [8.6, 7.6],
-    [11.4, 4.4], [13.2, 1.4], [12.4, -1.8], [10.2, -3.4], [9.6, -6.6],
-    [5.0, -8.6], [-1.5, -8.8], [-7.5, -6.6], [-10.0, -1.0],
+    [-9.5, 5.5], [-5.5, 10.0], [-0.5, 11.0], [4.5, 9.5], [8.6, 6.0],
+    [11.4, 1.5], [13.2, -3.5], [12.4, -5.2], [10.2, -6.0], [9.6, -7.6],
+    [5.0, -9.0], [-1.5, -9.0], [-7.5, -6.6], [-10.0, -1.0],
   ];
   const HEAD_FRONT = [
     [-10.0, 4.5], [-7.5, 9.4], [-2.5, 11.4], [3.0, 11.4], [7.6, 9.2],
@@ -253,16 +264,29 @@
     [2.0, -9.6], [-3.6, -9.4], [-8.0, -7.0], [-10.4, -2.0],
   ];
 
+  // Measured off the photographic reference: a cat's head is ~11cm nose to
+  // occiput and ~10cm tall, i.e. very slightly taller than it is long. The
+  // silhouettes above were hand-authored half again too long, which reads as a
+  // marten rather than a cat. Rather than rescaling every landmark by hand, the
+  // correction is applied once as a squash on the head's forward axis, so the
+  // outline, eyes, nose, whiskers and ears all compress together.
+  const HEAD_SQUASH_PROFILE = 0.67;
+  const HEAD_SQUASH_FRONT = 0.86;
+
   function headPoint(i, f) {
     const a = HEAD_PROFILE[i], b = HEAD_FRONT[i];
     return { f: lerp(a[0], b[0], f), u: lerp(a[1], b[1], f) };
   }
 
-  /** Local (forward, up) -> world, for a rotated + mirrored part. */
-  function makeXf(ox, oy, angle, scale, mirror) {
+  /**
+   * Local (forward, up) -> world, for a rotated + mirrored part.
+   * `fScale` squashes the local forward axis before rotation.
+   */
+  function makeXf(ox, oy, angle, scale, mirror, fScale) {
     const c = Math.cos(angle), s = Math.sin(angle);
+    const k = fScale == null ? 1 : fScale;
     return function (f, u) {
-      const x = f, y = -u;
+      const x = f * k, y = -u;
       return {
         x: ox + (x * c - y * s) * scale * mirror,
         y: oy + (x * s + y * c) * scale,
@@ -542,11 +566,12 @@
           continue;
         }
 
-        // A cat's limb tapers hard: a thick muscled upper, a thin wrist.
-        const upperTop = (leg.front ? 9.0 : 11.0) * s;
-        const upperEnd = (leg.front ? 5.6 : 6.4) * s;
-        const lowerTop = (leg.front ? 5.2 : 5.8) * s;
-        const lowerEnd = (leg.front ? 3.0 : 3.2) * s;
+        // A cat's limb tapers hard: a thick muscled upper, a thin wrist. The
+        // upper widths double as the shoulder and haunch mass.
+        const upperTop = (leg.front ? 14.0 : 20.0) * s;
+        const upperEnd = (leg.front ? 6.5 : 8.0) * s;
+        const lowerTop = (leg.front ? 6.0 : 7.0) * s;
+        const lowerEnd = (leg.front ? 3.2 : 3.4) * s;
 
         if (behind) {
           this.#limb(ctx, leg.hipX, leg.hipY, leg.kneeX, leg.kneeY, upperTop, upperEnd, coat, 0);
@@ -606,11 +631,14 @@
       const g = ctx.createLinearGradient(ax + nx * wa, ay + ny * wa, ax - nx * wa, ay - ny * wa);
       g.addColorStop(0, coat.light);
       g.addColorStop(0.42, coat.mid);
-      g.addColorStop(1, seg ? coat.dark : coat.shadow);
+      // The thick upper limbs double as the shoulder and haunch, so their far
+      // edge must not reach full shadow: at that width it paints a dark blob
+      // where the limb emerges from under the belly.
+      g.addColorStop(1, seg ? coat.shadow : coat.dark);
       ctx.fillStyle = g;
       ctx.fill();
       // A faint contour keeps overlapping limbs from merging into one mass.
-      ctx.strokeStyle = 'rgba(40,28,18,0.18)';
+      ctx.strokeStyle = 'rgba(40,28,18,0.10)';
       ctx.lineWidth = 0.7 * (wa / 9);
       ctx.stroke();
     }
@@ -685,7 +713,10 @@
       const frontality = clamp(Math.abs(yaw), 0, 1);
       // Turning back over the shoulder also swings the whole head round.
       const angle = rig.head.angle + yaw * -0.30 * mirror * mirror;
-      const xf = makeXf(rig.head.x, rig.head.y, angle, s, mirror);
+      // A head turned towards us presents its width, which needs less squash
+      // than the profile does.
+      const fSquash = lerp(HEAD_SQUASH_PROFILE, HEAD_SQUASH_FRONT, frontality);
+      const xf = makeXf(rig.head.x, rig.head.y, angle, s, mirror, fSquash);
       const screenAngle = angle * mirror;
 
       // --- ears: far one first, behind the skull -------------------------
@@ -719,7 +750,7 @@
       ctx.clip();
 
       // Muzzle and chin are paler.
-      const muz = xf(lerp(10.5, 0.5, frontality), -2.2);
+      const muz = xf(lerp(10.5, 0.5, frontality), -5.0);
       const mg = ctx.createRadialGradient(muz.x, muz.y, 0.5 * s, muz.x, muz.y, 9.5 * s);
       mg.addColorStop(0, coat.belly);
       mg.addColorStop(0.7, coat.belly);
@@ -746,7 +777,7 @@
       ctx.globalAlpha = 1;
 
       // Cheek shadow behind the muzzle.
-      const cheek = xf(lerp(3.0, 0.0, frontality), -4.5);
+      const cheek = xf(lerp(3.0, 0.0, frontality), -6.5);
       const cg = ctx.createRadialGradient(cheek.x, cheek.y, 0, cheek.x, cheek.y, 11 * s);
       cg.addColorStop(0, 'rgba(40,28,18,0.22)');
       cg.addColorStop(1, 'rgba(0,0,0,0)');
@@ -874,7 +905,7 @@
       const ef = far
         ? lerp(2.0, -3.8, frontality)
         : lerp(6.6, 4.2, frontality);
-      const eu = lerp(3.3, 3.7, frontality);
+      const eu = lerp(0.8, 2.3, frontality);
       const c = xf(ef, eu);
 
       const openness = clamp(rig.eyeLid == null ? rig.eyeOpen : rig.eyeLid, 0, 1);
@@ -954,7 +985,7 @@
       // Fully turned towards us the nose has to sit between the two eyes
       // (which land at f = +4.2 and -3.8), not out on the near cheek.
       const noseF = lerp(12.3, 0.4, frontality);
-      const noseU = lerp(0.9, 1.4, frontality);
+      const noseU = lerp(-3.6, -2.7, frontality);
       const n = xf(noseF, noseU);
 
       // Nose leather.
@@ -1009,7 +1040,7 @@
         const fanDir = lerp(1, side, frontality);
         const padOff = side * lerp(0, 3.0, frontality);
 
-        const root = xf(padF + padOff, -1.2);
+        const root = xf(padF + padOff, -4.2);
         ctx.save();
         ctx.globalAlpha = 0.28 * sideVis;
         ctx.fillStyle = coat.belly;
@@ -1032,7 +1063,7 @@
           const a = lerp(0.28, -0.44, t) + sway;
           const len = (14.5 - t * 2.5) * (0.8 + frontality * 0.2) *
             (side > 0 ? 1 : 0.92);
-          const fromU = -0.6 + i * 0.5;
+          const fromU = -3.6 + i * 0.5;
           const fromF = padF + padOff - i * 0.3 * fanDir;
           const p0 = xf(fromF, fromU);
           const p1 = xf(
@@ -1061,7 +1092,7 @@
       ctx.lineCap = 'round';
       for (let i = 0; i < 3; i++) {
         const fromF = lerp(6.2, 3.6, frontality) + i * 1.0;
-        const fromU = 7.0 + i * 0.4;
+        const fromU = 4.4 + i * 0.4;
         const a = 0.85 - i * 0.22;
         const len = 8.5 - i * 0.8;
         const p0 = xf(fromF, fromU);

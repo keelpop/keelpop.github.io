@@ -21,9 +21,9 @@ const c = document.getElementById('c');
 const ctx = c.getContext('2d');
 
 const cells = [
-  { pose: 'sit',   coat: 'brownTabby', yaw: 0.0,  x: 170, y: 330, s: 3.0, label: 'sit / profile' },
-  { pose: 'sit',   coat: 'grey',       yaw: 0.95, x: 600, y: 330, s: 3.0, label: 'sit / looking at you' },
-  { pose: 'stand', coat: 'black',      yaw: 0.5,  x: 980, y: 330, s: 2.2, label: 'stand / black' },
+  { pose: 'stand', coat: 'brownTabby', yaw: 0.0,  x: 170, y: 320, s: 3.0, label: 'stand / profile' },
+  { pose: 'sit',   coat: 'brownTabby', yaw: 0.0,  x: 700, y: 320, s: 3.0, label: 'sit / profile' },
+  { pose: 'sit',   coat: 'grey',       yaw: 0.95, x: 1010, y: 320, s: 2.6, label: 'sit / at you' },
   { pose: 'loaf',  coat: 'cream',      yaw: 0.85, x: 250, y: 700, s: 2.6, label: 'loaf / cream' },
   { pose: 'walk',  coat: 'brownTabby', yaw: -0.6, x: 800, y: 700, s: 2.2, label: 'walk / looking back' },
 ];
@@ -45,7 +45,7 @@ function frame(now) {
   ctx.fillStyle = '#23262d';
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-  for (const y of [330, 700]) {
+  for (const y of [320, 700]) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(c.width, y); ctx.stroke();
   }
   ctx.font = '13px monospace';
