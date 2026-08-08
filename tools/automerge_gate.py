@@ -45,17 +45,38 @@ DENY = [
     "CLAUDE.md", "**/CLAUDE.md",
     "CNAME", "**/CNAME",
     ".gitattributes", ".gitignore", ".nojekyll",
-    "**/package.json", "**/package-lock.json", "**/*.lock",
-    "**/.env", "**/.env.*",
+    # `**/` を付けたパターンは `/` を1つ以上要求するので、ルート直下には当たらない。
+    # 両方書くこと。ALLOW に *.json を足したとき、これが無くて
+    # ルートの package-lock.json だけが通り抜けていた。
+    "package.json", "**/package.json",
+    "package-lock.json", "**/package-lock.json",
+    "npm-shrinkwrap.json", "**/npm-shrinkwrap.json",
+    "*.lock", "**/*.lock",
+    ".env", ".env.*", "**/.env", "**/.env.*",
     "_config.yml", "_layouts/**", "_includes/**", "_posts/**", "_data/**",
 ]
 
 # 逆に、ここだけなら通してよい。列挙にないパスは既定で止める。
+#
+# .js を含めてあるのは、除いても防御にならないため。HTML はインラインの
+# <script> ごと通るので、同じコードを .js に切り出した瞬間だけ止まるのは
+# 一貫していない。実際にブラウザゲームのブランチが breathless/js/audio.js
+# だけで永久に保留になり、「全部止まって溜まる」元の状態に戻りかけた。
+# ページの中身の危険な書き方（<base href> / meta refresh）は check_site が見る。
+#
+# tools/ は仕組み専用に予約されている（DENY 側）。サイトの生成スクリプトを
+# 置く場所ではない。置くと毎回保留になる。
 ALLOW = [
     "*.html", "**/*.html",
     "*.css", "**/*.css",
     "*.md", "**/*.md",
-    "assets/**", "data/**",
+    "*.js", "**/*.js",
+    "*.json", "**/*.json",
+    "**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif",
+    "**/*.svg", "**/*.webp", "**/*.ico",
+    "**/*.woff", "**/*.woff2", "**/*.ttf",
+    "**/*.mp3", "**/*.ogg", "**/*.wav",
+    "assets/**", "**/assets/**", "data/**",
     "suno/*", "suno/**",
 ]
 
