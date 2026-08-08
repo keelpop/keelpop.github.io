@@ -20,22 +20,34 @@ import sys
 # 「ルールを強制する仕組み」（tools / .github / settings.json / skills / 憲法）は
 # 触らせない、という粒度にしてある。
 # 悪いルールが入っても、それを取り締まる検査そのものは書き換えられない。
+#
+# 拡張子まで縛るのは、この2つのディレクトリの中身が CLAUDE.md から @ で
+# 全セッションに読み込まれるため。無人セッションが任意のファイルを置ける場所に
+# してはいけない。
 SELF_UPDATABLE = [
-    ".claude/state/*", ".claude/state/**",
-    ".claude/rules/*", ".claude/rules/**",
+    ".claude/state/*.md", ".claude/state/*.jsonl",
+    ".claude/rules/*.md",
 ]
 
 # ここを触る変更は絶対に自動マージしない。
 # 保護機構そのものを、保護機構をすり抜けて書き換えられないようにするための一覧。
 # この設計が無いと、機械が自分の檻の鍵を作れてしまう。
+#
+# `**/` 付きが並んでいるのは、fnmatch の `*` が `/` をまたぐとはいえ
+# `CLAUDE.md` のような完全一致パターンは `docs/CLAUDE.md` に当たらないため。
+# Claude Code はサブディレクトリの CLAUDE.md も読むので、そこが抜けると
+# 「機械が自分への指示を人のレビュー無しで配る」経路が開く。
 DENY = [
-    ".github/*", ".github/**",
-    ".claude/*", ".claude/**",
-    "tools/*", "tools/**",
+    ".github/*", ".github/**", "**/.github/**",
+    ".claude/*", ".claude/**", "**/.claude/**",
+    "tools/*", "tools/**", "**/tools/**",
     ".githooks/*", ".githooks/**",
-    "CLAUDE.md", "CNAME", ".gitattributes", ".gitignore",
+    "CLAUDE.md", "**/CLAUDE.md",
+    "CNAME", "**/CNAME",
+    ".gitattributes", ".gitignore", ".nojekyll",
     "**/package.json", "**/package-lock.json", "**/*.lock",
     "**/.env", "**/.env.*",
+    "_config.yml", "_layouts/**", "_includes/**", "_posts/**", "_data/**",
 ]
 
 # 逆に、ここだけなら通してよい。列挙にないパスは既定で止める。
@@ -49,13 +61,19 @@ ALLOW = [
 
 MAX_ADDED = 2000
 MAX_FILES = 25
+MAX_FILE_BYTES = 5 * 1024 * 1024  # 行数で測れないファイル（画像・バイナリ）用
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def sh(*args):
-    return subprocess.run(args, capture_output=True, text=True).stdout
+    return subprocess.run(args, capture_output=True, text=True, cwd=ROOT).stdout
 
 
 def out(safe, reason):
+    # reason はこの後シェルに渡る。引用符が混ざるとコマンド注入や構文エラーになるので、
+    # ここで落としておく（拒否されたパスにファイル名がそのまま入るため実際に起こりうる）。
+    reason = reason.replace("'", "").replace('"', "").replace("`", "").replace("$", "")
     print("safe=%s" % ("true" if safe else "false"))
     print("reason=%s" % reason)
     sys.exit(0)
@@ -63,7 +81,13 @@ def out(safe, reason):
 
 def main():
     base = "origin/main"
-    names = [n for n in sh("git", "diff", "--name-only", "%s...HEAD" % base).split("\n") if n]
+
+    # --no-renames が要。git は既定でリネームを1件にまとめ、移動先のパスしか出さない。
+    # そのままだと `git mv .github/workflows/autoflow.yml assets/notes.md` が
+    # 「assets/notes.md を足しただけ、削除0件、増減0行」に見え、
+    # DENY も削除禁止も行数上限も全部すり抜けて保護機構ごと消せる。
+    names = [n for n in sh("git", "diff", "--no-renames", "--name-only",
+                           "%s...HEAD" % base).split("\n") if n]
     if not names:
         out(False, "main との差分がありません")
 
@@ -75,32 +99,40 @@ def main():
         if not any(fnmatch.fnmatch(path, p) for p in ALLOW):
             out(False, "自動マージの対象外のパスです: %s" % path)
 
-    deleted = [n for n in sh("git", "diff", "--diff-filter=D", "--name-only",
-                             "%s...HEAD" % base).split("\n") if n]
+    # D も R も止める。R（リネーム）は --no-renames で D+A に分解されるが、念のため。
+    deleted = [n for n in sh("git", "diff", "--no-renames", "--diff-filter=DR",
+                             "--name-only", "%s...HEAD" % base).split("\n") if n]
     if deleted:
         out(False, "ファイルを削除しています: %s" % ", ".join(deleted))
 
     added = 0
-    for line in sh("git", "diff", "--numstat", "%s...HEAD" % base).splitlines():
-        col = line.split("\t")[0]
-        if col.isdigit():
-            added += int(col)
+    for line in sh("git", "diff", "--no-renames", "--numstat", "%s...HEAD" % base).splitlines():
+        cols = line.split("\t")
+        if cols[0].isdigit():
+            added += int(cols[0])
+        elif cols[0] == "-" and len(cols) > 2:
+            # バイナリ。行数では測れないのでサイズで見る。
+            # ここが無いと 60MB の zip が「+0行」として通る。
+            blob = sh("git", "rev-parse", "HEAD:%s" % cols[2]).strip()
+            size = sh("git", "cat-file", "-s", blob).strip() if blob else ""
+            if size.isdigit() and int(size) > MAX_FILE_BYTES:
+                out(False, "%s が %.1fMB あります（上限 %dMB）"
+                    % (cols[2], int(size) / 1024 / 1024, MAX_FILE_BYTES // 1024 // 1024))
+
     if added > MAX_ADDED or len(names) > MAX_FILES:
         out(False, "規模が大きすぎます（+%d行 / %dファイル、上限 +%d / %d）"
             % (added, len(names), MAX_ADDED, MAX_FILES))
 
-    # 実際にマージを試して衝突を確かめる（ワークツリーは汚さない）
+    # 人が自動マージを止めたいときの手段。リポジトリ直下に .no-automerge を置くだけ。
+    # ALLOW に入れていないので、このファイル自体を足す変更も自動マージされない。
+    # PR を作らない設計なのでラベルは使えない（gh pr view が必ず失敗する）。
+    if os.path.exists(os.path.join(ROOT, ".no-automerge")):
+        out(False, ".no-automerge があるので止めました")
+
     merged = subprocess.run(["git", "merge-tree", "--write-tree", base, "HEAD"],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, cwd=ROOT)
     if merged.returncode != 0:
         out(False, "main と衝突します。rebase が必要です")
-
-    branch = os.environ.get("GITHUB_REF_NAME", "")
-    if branch:
-        labels = sh("gh", "pr", "view", branch, "--json", "labels", "-q", ".labels[].name")
-        for stop in ("no-automerge", "needs-human"):
-            if stop in labels:
-                out(False, "%s ラベルが付いています" % stop)
 
     out(True, "全条件クリア（+%d行 / %dファイル）" % (added, len(names)))
 

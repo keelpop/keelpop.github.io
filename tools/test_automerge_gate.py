@@ -64,6 +64,18 @@ def main():
         got = verdict(path)
         if got != want:
             bad.append("  %s: 期待=%s 実際=%s" % (path, want, got))
+
+    # パス一覧の作り方そのものを固定する。
+    # --no-renames が抜けると、git はリネームを移動先1件にまとめてしまい、
+    # `git mv .github/workflows/autoflow.yml assets/notes.md` が
+    # 「ファイルを1つ足しただけ・削除0・増減0行」に見える。
+    # DENY も削除禁止も行数上限も同時にすり抜けるので、保護機構ごと消せてしまう。
+    # これはパス→判定のテストでは絶対に捕まらない。
+    src = open(os.path.join(ROOT, "tools/automerge_gate.py"), encoding="utf-8").read()
+    if src.count("--no-renames") < 3:
+        bad.append("  automerge_gate.py の git diff から --no-renames が減っています"
+                   "（リネームで保護対象を消せるようになります）")
+
     if bad:
         print("automerge_gate の判定が変わっています:")
         print("\n".join(bad))

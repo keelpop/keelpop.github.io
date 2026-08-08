@@ -68,10 +68,16 @@ def strip_noise(html):
     return html
 
 
+# href='...' も href=... も拾う。二重引用符だけを見ていると、
+# シングルクォートで書かれた正しいリンクを「到達できない」と誤検知する。
+# 誤検知は ERROR になり、公開経路が丸ごと止まるので、リンク切れの見逃しより危ない。
+REF_RE = re.compile(r"""(?:href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>'"]+))""")
+
+
 def local_refs(html, from_path):
     """同じリポジトリ内を指す href/src を (元の値, 解決後のパス) で返す。"""
-    for ref in re.findall(r'(?:href|src)\s*=\s*"([^"]*)"', html):
-        raw = ref.strip()
+    for groups in REF_RE.findall(html):
+        raw = next((g for g in groups if g), "").strip()
         if not raw or raw.startswith(("http://", "https://", "//", "#", "mailto:", "tel:", "data:", "javascript:")):
             continue
         if "${" in raw or "{{" in raw:  # テンプレート。実行時にしか決まらない
@@ -107,8 +113,22 @@ def check_site():
         if not re.search(r'<meta[^>]+name\s*=\s*"description"', raw, re.I):
             warn(path, '<meta name="description"> が無い')
 
-        for bad in re.findall(r'href\s*=\s*"(#|)"', html):
+        for bad in re.findall(r"""href\s*=\s*["'](#|)["']""", html):
             err(path, 'href="%s" の行き先の無いリンクが公開されている' % bad)
+
+        # ページの中身は自動マージの門を素通りする（門はパスと行数しか見ない）。
+        # 見た目を壊さずにサイトの実体を他所へ移せてしまう3つだけは、ここで止める。
+        if re.search(r"<base\s[^>]*href\s*=\s*[\"']?https?:", raw, re.I):
+            err(path, "<base href> で外部サイトを指している（サイト全体の基準URLが変わる）")
+        if re.search(r"""<meta[^>]+http-equiv\s*=\s*["']?refresh""", raw, re.I):
+            err(path, "<meta http-equiv=refresh> による自動転送がある")
+        # 外部スクリプトは WARN にとどめる。translator.html は OCR に
+        # tesseract.js を CDN から読んでおり、これは正当な依存。
+        # ERROR にすると正しく動いているページのせいで公開経路が止まる。
+        # 一方 <base> と meta refresh は、このサイトに正当な用途が無く、
+        # 見た目を変えずにサイトの実体を他所へ移せるので ERROR のままにする。
+        for src in re.findall(r"""<script[^>]+src\s*=\s*["']?(https?://[^"'\s>]+)""", raw, re.I):
+            warn(path, "外部のスクリプトを読み込んでいる: %s" % src)
 
         for raw_ref, target in local_refs(html, path):
             if not os.path.exists(os.path.join(ROOT, target)):
@@ -202,11 +222,14 @@ def check_rules():
             if section not in text:
                 err(".claude/state/NOW.md", "%s の節が無い" % section)
         # 期限も既定動作も無い「待ち」は、放置されて14日腐る。構造で禁止する。
+        # 最後の待ちのブロックはファイル末尾まで伸びるので、空行で切ってから見る。
+        # そうしないと、後ろのどこかに due: の3文字があるだけで検査を通ってしまう。
         for block in re.split(r"^- item:", text, flags=re.M)[1:]:
+            block = re.split(r"\n\s*\n", block)[0]
             head = block.strip().splitlines()[0].strip()
-            if "due:" not in block:
+            if not re.search(r"^\s*due:\s*\S", block, re.M):
                 err(".claude/state/NOW.md", "待ち %r に due（期限）が無い" % head)
-            if "default:" not in block:
+            if not re.search(r"^\s*default:\s*\S", block, re.M):
                 err(".claude/state/NOW.md", "待ち %r に default（期限が来たら何をするか）が無い" % head)
     else:
         err(".claude/state/NOW.md", "存在しない。次のセッションが文脈をゼロから作り直すことになる")
@@ -237,6 +260,9 @@ def check_workflows():
         import yaml
     except ImportError:
         yaml = None
+        # 黙って弱い検査に落ちない。fallback は行頭の事故しか見ておらず、
+        # 字下げ崩れのような本来の YAML 破損は素通しする。
+        warn(".github/workflows", "pyyaml が無いので簡易検査のみ（CI では pip install pyyaml 済み）")
 
     for name in sorted(os.listdir(wf_dir)):
         if not name.endswith((".yml", ".yaml")):
