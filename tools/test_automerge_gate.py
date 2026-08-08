@@ -49,12 +49,26 @@ CASES = [
     (".gitignore", "deny"),
     ("desktop-cat/package.json", "deny"),
     ("desktop-cat/package-lock.json", "deny"),
+    # ルート直下も忘れずに。`**/x` は `/` を要求するのでここには当たらない。
+    ("package.json", "deny"),
+    ("package-lock.json", "deny"),
+    ("yarn.lock", "deny"),
+    (".env", "deny"),
+    (".env.production", "deny"),
     # 普通のページ追加。ここが止まると何も公開できなくなる。
     ("new-page.html", "allow"),
     ("suno/index.html", "allow"),
     ("suno/songs.json", "allow"),
     ("assets/img/cat.png", "allow"),
     ("README.md", "allow"),
+    # ブラウザゲームなど、1ページに収まらない作りのもの。
+    # ここを止めると、HTML にインラインで書けば通るのに切り出すと止まる、
+    # という一貫しない門になり、成果が溜まる元の状態に戻る。
+    ("breathless/index.html", "allow"),
+    ("breathless/js/game.js", "allow"),
+    ("breathless/css/style.css", "allow"),
+    ("breathless/assets/hit.mp3", "allow"),
+    ("desktop-cat/assets/poses.png", "allow"),
 ]
 
 
