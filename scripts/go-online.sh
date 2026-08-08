@@ -151,6 +151,11 @@ else
 
   gh コマンドが使えないので、ここだけ手でお願いします。
 
+  （Windows なら、次を1回やっておくと以後この手順は不要になります:
+       winget install --id GitHub.cli
+       gh auth login
+   そのあと同じコマンドをもう一度実行すれば、最後まで自動で進みます）
+
   1. https://github.com/new を開く
   2. Repository name に  $REPO_NAME
   3. **Private を選ぶ**（Public にしない）
