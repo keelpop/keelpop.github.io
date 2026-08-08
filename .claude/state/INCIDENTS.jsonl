@@ -1,0 +1,10 @@
+{"id":"INC-0001","ts":"2026-07-22","src":"audit","sig":"unpushed_work","sev":2,"detail":"session_016rGZK が成果ブランチ claude/claudecode-remote-switch-lnsevy を宣言しているが、リモートに存在しない。出力14,679トークン分の作業が push されずコンテナ回収で消えた疑い","auto":false}
+{"id":"INC-0002","ts":"2026-07-28","src":"audit","sig":"unpushed_work","sev":2,"detail":"session_01Ga8y8 が成果ブランチ claude/claude-public-indexing-54tepk を宣言しているが、リモートに存在しない","auto":false}
+{"id":"INC-0003","ts":"2026-08-08","src":"audit","sig":"branch_stranded","sev":2,"detail":"未マージの claude/* ブランチが4本、合計6,394行。main は2026-03-11 から150日停止。うち3本が index.html の同一箇所に追記しており相互に衝突する構造だった","auto":false}
+{"id":"INC-0004","ts":"2026-07-25","src":"audit","sig":"wait_abandoned","sev":1,"detail":"session_01XDdMW（Suno管理）がユーザー確認待ちのまま14日停止。due も default も無かった","auto":false}
+{"id":"INC-0005","ts":"2026-07-25","src":"audit","sig":"wait_abandoned","sev":1,"detail":"session_014wXo1（翻訳ツール）がテスト結果待ちのまま14日停止。due も default も無かった","auto":false}
+{"id":"INC-0006","ts":"2026-08-08","src":"audit","sig":"session_bloat","sev":1,"detail":"session_013Jxtg が4,968行を1コミットで作る作業を1セッションに詰め込み、キャッシュ読み込み26,075,231トークン（出力の127倍）。他セッションの読込/出力比は28〜71倍","auto":false}
+{"id":"INC-0007","ts":"2026-03-10","src":"audit","sig":"bad_commit_msg","sev":1,"detail":"コミット ef372a0 のメッセージが \"Update print statement from 'Hello' to 'Goodbye'\"、実体は research.html への +892行。履歴から変更内容が追えない","auto":false}
+{"id":"INC-0008","ts":"2026-03-11","src":"audit","sig":"filename_churn","sev":1,"detail":"1ファイルを置くのに reserch2(拡張子なし) 作成 → 削除 → reserach2.html(typo) 作成 → research2.html にリネーム で4コミット消費","auto":false}
+{"id":"INC-0009","ts":"2026-08-08","src":"audit","sig":"site_defect","sev":2,"detail":"index.html に viewport が無く（他の全ページにはある）スマホで崩れていた。href=\"#\" の死にリンク4本が公開されていた。research2.html(114KB) がどこからもリンクされず到達不能だった","auto":false}
+{"id":"INC-0010","ts":"2026-08-08","src":"self","sig":"unpushed_work","sev":2,"session":"session-optimization","detail":"未コミットの新規ファイル8点を持ったまま検証用ブランチを切り、git add -A で巻き込んでコミット。ブランチ削除で作業が消えた。reflog の dangling commit 663276a から全件復旧。作業を作ったら即コミットしていれば起きなかった","auto":false}
