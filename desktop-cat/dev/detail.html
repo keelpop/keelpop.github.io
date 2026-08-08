@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>cat detail</title>
+  <script>
+    window.__errs = [];
+    window.addEventListener('error', (e) => {
+      window.__errs.push(`${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`);
+    });
+  </script>
+  <style>html, body { margin: 0; background: #23262d; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c" width="1200" height="760"></canvas>
+<script src="../src/renderer/rig.js"></script>
+<script src="../src/renderer/draw.js"></script>
+<script>
+/* Large-scale views for checking fur, eyes, ears and whiskers up close. */
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+
+const cells = [
+  { pose: 'sit',   coat: 'brownTabby', yaw: 0.0,  x: 170, y: 330, s: 3.0, label: 'sit / profile' },
+  { pose: 'sit',   coat: 'grey',       yaw: 0.95, x: 600, y: 330, s: 3.0, label: 'sit / looking at you' },
+  { pose: 'stand', coat: 'black',      yaw: 0.5,  x: 980, y: 330, s: 2.2, label: 'stand / black' },
+  { pose: 'loaf',  coat: 'cream',      yaw: 0.85, x: 250, y: 700, s: 2.6, label: 'loaf / cream' },
+  { pose: 'walk',  coat: 'brownTabby', yaw: -0.6, x: 800, y: 700, s: 2.2, label: 'walk / looking back' },
+];
+
+const DEBUG = new URLSearchParams(location.search).has('debug');
+for (const cell of cells) {
+  cell.art = new CatArt.CatArt({ coat: cell.coat });
+  cell.art.debug = DEBUG;
+  cell.rig = new CatRig.Rig({ x: cell.x, y: cell.y, scale: cell.s });
+  cell.rig.poseName = cell.pose;
+  cell.rig.pupilTarget = 0.55;
+  cell.rig.snapToPose();
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 1 / 30);
+  last = now;
+  ctx.fillStyle = '#23262d';
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  for (const y of [330, 700]) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(c.width, y); ctx.stroke();
+  }
+  ctx.font = '13px monospace';
+  for (const cell of cells) {
+    const r = cell.rig;
+    if (cell.pose === 'walk') { r.vx = 40 * r.scale; r.vy = 0; }
+    // Drive headYaw directly so each cell holds a fixed head orientation.
+    r.headYaw = cell.yaw;
+    r.lookWeight = 0;
+    r.update(dt);
+    r.headYaw = cell.yaw;
+    cell.art.draw(ctx, r, cell.y);
+    ctx.fillStyle = '#8fa';
+    ctx.fillText(cell.label, cell.x - 120, cell.y + 30);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "name": "desktop-cat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A semi-realistic cat that lives on your desktop, watches you work, and occasionally swats your cursor.",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --cat-debug",
+    "test": "node dev/behaviour-test.js",
+    "sandbox": "node dev/open-sandbox.js",
+    "icons": "electron dev/make-icons.js",
+    "shots": "electron dev/shot.js dev/pose-sheet.html dev/pose-sheet.png 1280 900 1600 && electron dev/shot.js dev/detail.html dev/detail.png 1200 760 1600",
+    "dist": "electron-builder"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^43.3.0"
+  },
+  "build": {
+    "appId": "io.github.keelpop.desktopcat",
+    "productName": "Desktop Cat",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "icon": "assets/icon-512.png",
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "win": {
+      "icon": "assets/icon-256.png",
+      "target": "nsis"
+    },
+    "linux": {
+      "icon": "assets/icon-512.png",
+      "category": "Utility",
+      "target": "AppImage"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>cat pose sheet</title>
+  <script>
+    window.__errs = [];
+    window.addEventListener('error', (e) => {
+      window.__errs.push(`${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`);
+    });
+  </script>
+  <style>
+    html, body { margin: 0; background: #20242b; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="1280" height="900"></canvas>
+<script src="../src/renderer/rig.js"></script>
+<script src="../src/renderer/draw.js"></script>
+<script>
+/* A contact sheet of every pose, both facings, for eyeballing the art. */
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+const art = new CatArt.CatArt({ coat: 'brownTabby' });
+const DEBUG = new URLSearchParams(location.search).has('debug');
+art.debug = DEBUG;
+
+const poses = ['stand', 'walk', 'sit', 'loaf', 'sleep', 'crouch', 'pounce', 'stretch'];
+const rigs = [];
+
+poses.forEach((name, i) => {
+  const col = i % 4, row = Math.floor(i / 4);
+  for (const dir of [1, -1]) {
+    const rig = new CatRig.Rig({
+      x: 130 + col * 310 + (dir < 0 ? 150 : 0),
+      y: 190 + row * 430 + (dir < 0 ? 190 : 0),
+      scale: 1.15,
+    });
+    rig.dir = rig.dirTarget = dir;
+    rig.poseName = name;
+    rig.lookWeight = dir < 0 ? 0.9 : 0.25;
+    rig.pupilTarget = 0.5;
+    rig.snapToPose();
+    rigs.push({ rig, name, dir, groundY: rig.y });
+  }
+});
+
+let last = performance.now();
+let elapsed = 0;
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 1 / 30);
+  last = now;
+  elapsed += dt;
+  ctx.fillStyle = '#20242b';
+  ctx.fillRect(0, 0, c.width, c.height);
+
+  // Ground lines first, so the cats sit on them.
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  for (let row = 0; row < 2; row++) {
+    for (const off of [0, 190]) {
+      const y = 190 + row * 430 + off;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(c.width, y);
+      ctx.stroke();
+    }
+  }
+
+  ctx.font = '12px monospace';
+  for (const r of rigs) {
+    r.rig.lookAt(
+      r.rig.x + r.rig.dir * 120 + Math.sin(elapsed) * 60,
+      r.rig.y - 60,
+      r.rig.lookWeight
+    );
+    r.rig.tailWhip = 0.25;
+    r.rig.update(dt);
+    art.draw(ctx, r.rig, r.groundY);
+    if (r.dir > 0) {
+      ctx.fillStyle = '#8fa';
+      ctx.fillText(r.name, r.rig.x - 60, r.groundY + 26);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__ready = true;
+</script>
+</body>
+</html>

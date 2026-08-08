@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# Dev renders; regenerate with `npm run shots`. The two committed under assets/
+# are the documented ones.
+dev/*.png
