@@ -40,7 +40,14 @@ jobs:
             # ローカルに残ったまま次を積むと、検査されていない複数のマージが
             # まとめて公開される事故になる。
             git checkout -q main && git reset -q --hard origin/main
-            [ "$(git rev-list --count "origin/main..origin/$b")" = "0" ] && continue
+            if [ "$(git rev-list --count "origin/main..origin/$b")" = "0" ]; then
+              # main に完全に取り込まれている。消しても何も失われない。
+              # ここを continue で飛ばしていると、済んだブランチが一覧に残り続け、
+              # 「未マージがどれか」が読めなくなる。放置の温床になるので掃除する。
+              echo "取り込み済みなので削除: $b"
+              git push origin --delete "$b" || true
+              continue
+            fi
             MERGED=$(git rev-parse "origin/$b")
 
             git checkout -q -B sweep "$MERGED"
