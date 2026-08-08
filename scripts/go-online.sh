@@ -4,10 +4,11 @@
 #   bash go-online.sh ~/path/to/プロジェクト
 #
 # やること（この順で、途中で止まったら何も壊さずに終わる）
-#   1. 外に出してはいけないものが混ざっていないか調べる  ← ここで止まったら先に進まない
-#   2. 大きすぎるファイルが無いか調べる
-#   3. .gitignore を用意する
-#   4. git の履歴が無ければ作る
+#   1. .gitignore を用意する            ← 先にこれ。何を送るかがここで決まる
+#   2. git の履歴が無ければ作る
+#   3. 外に出してはいけないものが混ざっていないか調べる  ← ここで止まったら先に進まない
+#      調べるのは「git が実際に送るもの」だけ。.gitignore で除外したものは見ない。
+#   4. 大きすぎるファイルが無いか調べる
 #   5. セッションの失敗を防ぐ仕組みを入れる
 #   6. GitHub に **非公開** リポジトリを作って push する
 #
@@ -80,32 +81,8 @@ for f in tools/scan_secrets.py scripts/install-rule-system.sh; do
   [ -f "$KIT_DIR/$f" ] || ng "道具が揃っていません（$f が無い）。取得先が古い可能性があります。"
 done
 
-# ---------------------------------------------------------------- 1. 秘密
-say "-- 1/6 外に出してはいけないものが無いか調べます"
-if ! "$PY" "$KIT_DIR/tools/scan_secrets.py" "$TARGET"; then
-  cat >&2 <<'STOP'
-
-ここで止めました。まだ何も送信していません。
-
-一度 GitHub に上げたものは、あとから消しても履歴と他人のクローンに残ります。
-取り消せない種類の失敗なので、先に上の指摘を片付けてください。
-片付いたら、同じコマンドをもう一度実行すれば続きから進みます。
-STOP
-  exit 1
-fi
-
-# ---------------------------------------------------------------- 2. 大物
-say "-- 2/6 大きすぎるファイルが無いか調べます"
-BIG=$(find "$TARGET" -type f -size +50M -not -path '*/.git/*' -not -path '*/node_modules/*' 2>/dev/null || true)
-if [ -n "$BIG" ]; then
-  echo "50MB を超えるファイルがあります。GitHub は100MBを超えると受け取りません。" >&2
-  echo "$BIG" | sed 's/^/  /' >&2
-  ng "これらを消すか .gitignore に入れてから、もう一度実行してください。"
-fi
-echo "  大きすぎるファイルはありません。"
-
-# ---------------------------------------------------------------- 3. gitignore
-say "-- 3/6 .gitignore を用意します"
+# ---------------------------------------------------------------- 1. gitignore
+say "-- 1/6 .gitignore を用意します"
 if [ -e "$TARGET/.gitignore" ]; then
   echo "  既にあります。触りません。"
 else
@@ -113,6 +90,11 @@ else
 # 秘密・環境ごとの設定
 .env
 .env.*
+# ただし雛形は入れる。値が伏せてあり、他の人（と将来の自分）が
+# 何を設定すればいいか分かるようにしておくためのもの。
+!.env.example
+!.env.sample
+!.env.template
 *.pem
 *.key
 credentials.json
@@ -128,8 +110,8 @@ IGNORE
   echo "  作りました。"
 fi
 
-# ---------------------------------------------------------------- 4. git
-say "-- 4/6 git の履歴を確かめます"
+# ---------------------------------------------------------------- 2. git
+say "-- 2/6 git の履歴を確かめます"
 cd "$TARGET"
 if [ -d .git ]; then
   echo "  既にあります。"
@@ -139,17 +121,42 @@ else
 fi
 git config user.name  >/dev/null 2>&1 || git config user.name  "keelpop"
 git config user.email >/dev/null 2>&1 || git config user.email "keel00biz@gmail.com"
-if [ -z "$(git rev-parse --verify HEAD 2>/dev/null || true)" ]; then
-  git add -A && git commit -q -m "Bring the project under version control"
-  echo "  最初のコミットを作りました。"
-fi
 git branch -M main 2>/dev/null || true
+echo "  この時点ではまだコミットしません。検査を通ってからにします。"
+
+# ---------------------------------------------------------------- 3. 秘密
+say "-- 3/6 外に出してはいけないものが無いか調べます"
+if ! "$PY" "$KIT_DIR/tools/scan_secrets.py" "$TARGET"; then
+  cat >&2 <<'STOP'
+
+ここで止めました。まだ何も送信していません。
+
+一度 GitHub に上げたものは、あとから消しても履歴と他人のクローンに残ります。
+取り消せない種類の失敗なので、先に上の指摘を片付けてください。
+片付いたら、同じコマンドをもう一度実行すれば続きから進みます。
+STOP
+  exit 1
+fi
+
+# ---------------------------------------------------------------- 4. 大物
+say "-- 4/6 大きすぎるファイルが無いか調べます"
+BIG=$(find "$TARGET" -type f -size +50M -not -path '*/.git/*' -not -path '*/node_modules/*' 2>/dev/null || true)
+if [ -n "$BIG" ]; then
+  echo "50MB を超えるファイルがあります。GitHub は100MBを超えると受け取りません。" >&2
+  echo "$BIG" | sed 's/^/  /' >&2
+  ng "これらを消すか .gitignore に入れてから、もう一度実行してください。"
+fi
+echo "  大きすぎるファイルはありません。"
 
 # ---------------------------------------------------------------- 5. 仕組み
 say "-- 5/6 セッションの失敗を防ぐ仕組みを入れます"
 bash "$KIT_DIR/scripts/install-rule-system.sh" "$TARGET" | sed 's/^/  /'
 git add -A
-git diff --cached --quiet || git commit -q -m "Add the rule system: constitution, state, checker and CI"
+if [ -z "$(git rev-parse --verify HEAD 2>/dev/null || true)" ]; then
+  git commit -q -m "Bring the project under version control"
+else
+  git diff --cached --quiet || git commit -q -m "Add the rule system: constitution, state, checker and CI"
+fi
 
 # ---------------------------------------------------------------- 6. GitHub
 say "-- 6/6 GitHub に上げます"
