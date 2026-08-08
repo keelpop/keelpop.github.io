@@ -69,6 +69,10 @@ CASES = [
     ("breathless/css/style.css", "allow"),
     ("breathless/assets/hit.mp3", "allow"),
     ("desktop-cat/assets/poses.png", "allow"),
+    # サイト用の生成スクリプトの置き場所。tools/ は仕組み専用なので、
+    # ここが無いとスクリプト1本でブランチ全体が永久に止まる。
+    ("scripts/genlevels.py", "allow"),
+    ("scripts/build/make-sprites.sh", "allow"),
 ]
 
 
