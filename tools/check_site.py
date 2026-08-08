@@ -221,6 +221,58 @@ def check_rules():
                     err(".claude/state/INCIDENTS.jsonl", "%d 行目が JSON として壊れている: %s" % (i, e))
 
 
+def check_workflows():
+    """ワークフローの YAML が壊れていないか。
+
+    壊れた YAML はジョブを1つも起動せずに「失敗」だけを残すので、
+    ログを見ても原因が分からない。実際に一度これで詰まった（INC-0011）。
+    よくやるのは、`run: |` の中で PR 本文の区切り線 `---` や
+    テンプレートの続きを行頭から書いてしまい、YAML のドキュメント区切りや
+    新しいキーとして解釈されるパターン。
+    """
+    wf_dir = os.path.join(ROOT, ".github/workflows")
+    if not os.path.isdir(wf_dir):
+        return
+    try:
+        import yaml
+    except ImportError:
+        yaml = None
+
+    for name in sorted(os.listdir(wf_dir)):
+        if not name.endswith((".yml", ".yaml")):
+            continue
+        path = ".github/workflows/" + name
+        text = open(os.path.join(wf_dir, name), encoding="utf-8").read()
+
+        if yaml is not None:
+            try:
+                docs = [d for d in yaml.safe_load_all(text) if d]
+            except Exception as e:
+                err(path, "YAML が壊れている（ジョブが1つも起動しない）: %s"
+                    % str(e).replace("\n", " ")[:160])
+                continue
+            if len(docs) != 1:
+                err(path, "YAML ドキュメントが %d 個ある。行頭の `---` はドキュメント区切りになる" % len(docs))
+                continue
+            if not docs[0].get("name"):
+                warn(path, "name: が無い。Actions の一覧でファイル名のまま表示される")
+            if not (docs[0].get("on") or docs[0].get(True)):  # YAML 1.1 では on: が True になる
+                err(path, "on: が無い。起動条件の無いワークフロー")
+        else:
+            # pyyaml が無い環境向けの簡易版。上の2つの事故だけは確実に捕まえる。
+            allowed = ("name:", "on:", "jobs:", "permissions:", "env:", "defaults:",
+                       "concurrency:", "run-name:", "#")
+            for i, line in enumerate(text.splitlines(), 1):
+                if not line or line[0].isspace():
+                    continue
+                if line.strip() == "---":
+                    err(path, "%d 行目の行頭 `---` は YAML のドキュメント区切りになる。"
+                              "文字列に入れたいなら printf で組み立てること" % i)
+                elif not line.startswith(allowed):
+                    err(path, "%d 行目が行頭から始まっている: %r。"
+                              "run: の中身は必ず字下げすること" % (i, line[:40]))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", action="store_true")
@@ -232,6 +284,7 @@ def main():
         check_site()
     if run_all or args.rules:
         check_rules()
+        check_workflows()
 
     errors = [p for p in problems if p[0] == "ERROR"]
     warns = [p for p in problems if p[0] == "WARN"]
