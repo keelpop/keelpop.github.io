@@ -28,3 +28,8 @@ jobs:
 
       - name: 自動マージの通す/止めるが崩れていないか
         run: python3 tools/test_automerge_gate.py
+
+      # 秘密は、上げてしまうと消しても履歴と他人のクローンに残る。
+      # 取り消せない失敗なので、push のたびに見る。
+      - name: 秘密が混ざっていないか
+        run: python3 tools/scan_secrets.py .

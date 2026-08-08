@@ -66,6 +66,7 @@ echo "-- 検査と門"
 copy tools/check_site.py
 copy tools/automerge_gate.py
 copy tools/test_automerge_gate.py
+copy tools/scan_secrets.py
 copy tools/session_start.sh
 chmod +x "$DST"/tools/*.sh "$DST"/tools/*.py 2>/dev/null || true
 
