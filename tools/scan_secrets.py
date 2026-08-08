@@ -74,9 +74,19 @@ def target_files(root):
     return found
 
 
-def scan(root):
+def scan(root, progress=True):
+    files = target_files(root)
+    total = len(files)
+    # WSL から Windows 側のドライブ（/mnt/c）を読むのは非常に遅い。
+    # 何も出ないまま数分黙っていると、止まったのか動いているのか分からず、
+    # 止めたくなる。実際に大きなプロジェクトでそうなりかけた。
+    if progress and total > 200:
+        print("%d 個のファイルを調べます。時間がかかることがあります…" % total, flush=True)
+
     hits = []
-    for rel in target_files(root):
+    for done, rel in enumerate(files, 1):
+        if progress and total > 200 and done % 500 == 0:
+            print("  %d / %d" % (done, total), flush=True)
         path = os.path.join(root, rel)
         name = os.path.basename(rel)
 
@@ -107,8 +117,9 @@ def scan(root):
 
 
 def main():
-    root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
-    hits = scan(root)
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    root = os.path.abspath(args[0] if args else ".")
+    hits = scan(root, progress="--quiet" not in sys.argv)
 
     if not hits:
         print("秘密らしきものは見つかりませんでした。")
