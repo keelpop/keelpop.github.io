@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ゲーム画面 リアルタイム翻訳 | keelpop</title>
+
+<style>
+
+*{box-sizing:border-box;}
+
+body{
+background:#0f172a;
+color:#e2e8f0;
+font-family:sans-serif;
+margin:0;
+padding:20px;
+}
+
+h1{
+font-size:24px;
+margin:0 0 4px;
+}
+
+.sub{
+opacity:0.6;
+font-size:13px;
+margin-bottom:16px;
+}
+
+.layout{
+display:grid;
+grid-template-columns:minmax(0,1fr) 320px;
+gap:16px;
+align-items:start;
+}
+
+@media(max-width:900px){
+.layout{grid-template-columns:1fr;}
+}
+
+.panel{
+background:#1e293b;
+border-radius:10px;
+padding:14px;
+}
+
+.panel h2{
+font-size:14px;
+margin:0 0 10px;
+opacity:0.8;
+}
+
+/* --- capture area --- */
+
+#videoWrap{
+position:relative;
+background:#000;
+border-radius:8px;
+overflow:hidden;
+cursor:crosshair;
+user-select:none;
+min-height:120px;
+}
+
+#video{
+display:block;
+width:100%;
+}
+
+#regionBox{
+position:absolute;
+border:2px dashed #38bdf8;
+background:rgba(56,189,248,0.08);
+pointer-events:none;
+display:none;
+}
+
+#videoHint{
+position:absolute;
+inset:0;
+display:flex;
+align-items:center;
+justify-content:center;
+color:#64748b;
+font-size:14px;
+text-align:center;
+padding:20px;
+}
+
+/* --- subtitle --- */
+
+#subtitle{
+margin-top:12px;
+background:rgba(0,0,0,0.75);
+border-radius:8px;
+padding:14px 18px;
+font-size:22px;
+line-height:1.5;
+min-height:56px;
+}
+
+#subtitleSrc{
+font-size:13px;
+opacity:0.5;
+margin-top:6px;
+}
+
+/* --- controls --- */
+
+button{
+background:#38bdf8;
+color:#0f172a;
+border:none;
+border-radius:6px;
+padding:9px 14px;
+font-size:14px;
+font-weight:bold;
+cursor:pointer;
+margin:0 6px 6px 0;
+}
+
+button.secondary{
+background:#334155;
+color:#e2e8f0;
+font-weight:normal;
+}
+
+button:disabled{
+opacity:0.4;
+cursor:default;
+}
+
+label{
+display:block;
+font-size:12px;
+opacity:0.7;
+margin:10px 0 3px;
+}
+
+select,input[type=text]{
+width:100%;
+background:#0f172a;
+color:#e2e8f0;
+border:1px solid #334155;
+border-radius:6px;
+padding:7px;
+font-size:13px;
+}
+
+input[type=range]{
+width:100%;
+}
+
+.check{
+display:flex;
+align-items:center;
+gap:6px;
+font-size:13px;
+margin-top:10px;
+}
+
+.check input{margin:0;}
+
+.rangeVal{
+font-size:11px;
+opacity:0.5;
+float:right;
+}
+
+/* --- status --- */
+
+#status{
+font-size:12px;
+line-height:1.8;
+opacity:0.8;
+}
+
+#status b{color:#38bdf8;}
+
+#dot{
+display:inline-block;
+width:8px;
+height:8px;
+border-radius:50%;
+background:#475569;
+margin-right:6px;
+}
+
+#dot.on{background:#4ade80;}
+#dot.busy{background:#facc15;}
+
+/* --- OCR preview --- */
+
+#ocrPreview{
+width:100%;
+background:#000;
+border-radius:6px;
+display:block;
+}
+
+/* --- history --- */
+
+#history{
+max-height:300px;
+overflow-y:auto;
+font-size:13px;
+}
+
+.hItem{
+border-bottom:1px solid #334155;
+padding:8px 0;
+}
+
+.hItem .tr{line-height:1.5;}
+
+.hItem .src{
+opacity:0.45;
+font-size:11px;
+margin-top:3px;
+line-height:1.4;
+}
+
+a.back{
+color:#38bdf8;
+font-size:13px;
+text-decoration:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>ゲーム画面 リアルタイム翻訳</h1>
+
+<div class="sub">
+画面共有 → 範囲選択 → OCR → 自動翻訳。テキストが止まった瞬間だけOCRするので軽くて高精度。
+<a class="back" href="index.html">← top</a>
+</div>
+
+<div class="layout">
+
+<div>
+
+<div class="panel">
+
+<button id="btnStart">画面キャプチャ開始</button>
+<button id="btnStop" class="secondary" disabled>停止</button>
+<button id="btnRegionReset" class="secondary" disabled>選択範囲リセット</button>
+<button id="btnPopup" class="secondary" disabled>字幕を別ウィンドウ表示</button>
+
+<div id="videoWrap">
+<video id="video" autoplay muted playsinline></video>
+<div id="regionBox"></div>
+<div id="videoHint">「画面キャプチャ開始」を押してゲームのウィンドウを選択。<br>映像の上をドラッグすると、その範囲だけOCRされます（精度UP・軽量化）。</div>
+</div>
+
+<div id="subtitle">
+<div id="subtitleText" style="opacity:0.4">翻訳がここに表示されます</div>
+<div id="subtitleSrc"></div>
+</div>
+
+</div>
+
+<div class="panel" style="margin-top:16px">
+<h2>履歴</h2>
+<div id="history"></div>
+</div>
+
+</div>
+
+<div>
+
+<div class="panel">
+
+<h2>設定</h2>
+
+<label>ゲームの言語（OCR）</label>
+<select id="ocrLang">
+<option value="eng" selected>英語</option>
+<option value="jpn">日本語</option>
+<option value="kor">韓国語</option>
+<option value="chi_sim">中国語（簡体）</option>
+<option value="chi_tra">中国語（繁体）</option>
+<option value="deu">ドイツ語</option>
+<option value="fra">フランス語</option>
+<option value="spa">スペイン語</option>
+<option value="rus">ロシア語</option>
+<option value="por">ポルトガル語</option>
+<option value="ita">イタリア語</option>
+</select>
+
+<label>翻訳先</label>
+<select id="tgtLang">
+<option value="ja" selected>日本語</option>
+<option value="en">英語</option>
+<option value="ko">韓国語</option>
+<option value="zh-CN">中国語（簡体）</option>
+</select>
+
+<label>翻訳エンジン</label>
+<select id="engine">
+<option value="google" selected>Google（無料・非公式）</option>
+<option value="mymemory">MyMemory（無料）</option>
+</select>
+
+<label>チェック間隔 <span class="rangeVal" id="intervalVal">400ms</span></label>
+<input type="range" id="interval" min="200" max="2000" step="100" value="400">
+
+<label>静止待ち時間（文字送り演出が止まるまで待つ） <span class="rangeVal" id="stabilityVal">700ms</span></label>
+<input type="range" id="stability" min="0" max="2500" step="100" value="700">
+
+<label>低信頼ワード除去しきい値 <span class="rangeVal" id="confVal">55</span></label>
+<input type="range" id="conf" min="0" max="90" step="5" value="55">
+
+<div class="check">
+<input type="checkbox" id="prep" checked>
+<label for="prep" style="margin:0;display:inline;opacity:1">前処理（拡大＋コントラスト＋自動反転）</label>
+</div>
+
+<div class="check">
+<input type="checkbox" id="binarize">
+<label for="binarize" style="margin:0;display:inline;opacity:1">二値化（背景がうるさい時に試す）</label>
+</div>
+
+</div>
+
+<div class="panel" style="margin-top:16px">
+<h2>ステータス</h2>
+<div id="status"><span id="dot"></span><span id="statusText">待機中</span><br>
+OCR: <b id="stOcr">-</b> / 信頼度: <b id="stConf">-</b><br>
+エンジン: <b id="stEngine">-</b> / キャッシュ: <b id="stCache">0</b>
+</div>
+</div>
+
+<div class="panel" style="margin-top:16px">
+<h2>OCRに渡している画像（デバッグ）</h2>
+<canvas id="ocrPreview" width="320" height="80"></canvas>
+</div>
+
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script>
+
+// ---------- state ----------
+
+let stream = null;
+let worker = null;
+let workerLang = null;
+let timer = null;
+let region = null;            // {x,y,w,h} normalized 0-1, null = full frame
+let prevSample = null;        // small grayscale sample for change detection
+let lastChangeAt = 0;
+let pendingOCR = false;
+let ocrBusy = false;
+let lastOcrText = "";
+const cache = new Map();      // src text -> translation
+
+const $ = id => document.getElementById(id);
+const video = $("video");
+const capCanvas = document.createElement("canvas");
+const capCtx = capCanvas.getContext("2d", {willReadFrequently:true});
+const sampleCanvas = document.createElement("canvas");
+const sampleCtx = sampleCanvas.getContext("2d", {willReadFrequently:true});
+let popupWin = null;
+
+// ---------- settings persistence ----------
+
+const SETTING_IDS = ["ocrLang","tgtLang","engine","interval","stability","conf","prep","binarize"];
+
+function loadSettings(){
+try{
+const s = JSON.parse(localStorage.getItem("gt-settings") || "{}");
+for(const id of SETTING_IDS){
+if(s[id] === undefined) continue;
+const el = $(id);
+if(el.type === "checkbox") el.checked = s[id]; else el.value = s[id];
+}
+}catch(e){}
+updateRangeLabels();
+}
+
+function saveSettings(){
+const s = {};
+for(const id of SETTING_IDS){
+const el = $(id);
+s[id] = el.type === "checkbox" ? el.checked : el.value;
+}
+localStorage.setItem("gt-settings", JSON.stringify(s));
+}
+
+function updateRangeLabels(){
+$("intervalVal").textContent = $("interval").value + "ms";
+$("stabilityVal").textContent = $("stability").value + "ms";
+$("confVal").textContent = $("conf").value;
+}
+
+for(const id of SETTING_IDS){
+$(id).addEventListener("change", () => {
+saveSettings();
+updateRangeLabels();
+if(id === "ocrLang") ensureWorker();
+if(id === "interval") restartLoop();
+});
+}
+$("interval").addEventListener("input", updateRangeLabels);
+$("stability").addEventListener("input", updateRangeLabels);
+$("conf").addEventListener("input", updateRangeLabels);
+
+loadSettings();
+
+// ---------- status ----------
+
+function setStatus(text, dotClass){
+$("statusText").textContent = text;
+$("dot").className = dotClass || "";
+}
+
+// ---------- capture ----------
+
+$("btnStart").onclick = async () => {
+try{
+stream = await navigator.mediaDevices.getDisplayMedia({
+video:{frameRate:15},
+audio:false
+});
+}catch(e){
+return;
+}
+video.srcObject = stream;
+$("videoHint").style.display = "none";
+$("btnStart").disabled = true;
+$("btnStop").disabled = false;
+$("btnRegionReset").disabled = false;
+$("btnPopup").disabled = false;
+stream.getVideoTracks()[0].addEventListener("ended", stopCapture);
+prevSample = null;
+lastOcrText = "";
+setStatus("キャプチャ中", "on");
+await ensureWorker();
+restartLoop();
+};
+
+$("btnStop").onclick = stopCapture;
+
+function stopCapture(){
+if(timer) clearInterval(timer);
+timer = null;
+if(stream) stream.getTracks().forEach(t => t.stop());
+stream = null;
+video.srcObject = null;
+$("videoHint").style.display = "flex";
+$("btnStart").disabled = false;
+$("btnStop").disabled = true;
+$("btnRegionReset").disabled = true;
+setStatus("停止", "");
+}
+
+// ---------- region selection ----------
+
+const wrap = $("videoWrap");
+const regionBox = $("regionBox");
+let dragStart = null;
+
+wrap.addEventListener("mousedown", e => {
+if(!stream) return;
+const r = wrap.getBoundingClientRect();
+dragStart = {x:(e.clientX - r.left) / r.width, y:(e.clientY - r.top) / r.height};
+});
+
+window.addEventListener("mousemove", e => {
+if(!dragStart) return;
+const r = wrap.getBoundingClientRect();
+const cur = {
+x:Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1),
+y:Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1)
+};
+drawRegionBox(makeRect(dragStart, cur));
+});
+
+window.addEventListener("mouseup", e => {
+if(!dragStart) return;
+const r = wrap.getBoundingClientRect();
+const cur = {
+x:Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1),
+y:Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1)
+};
+const rect = makeRect(dragStart, cur);
+dragStart = null;
+if(rect.w > 0.02 && rect.h > 0.02){
+region = rect;
+drawRegionBox(rect);
+prevSample = null;
+lastOcrText = "";
+}else{
+drawRegionBox(region);
+}
+});
+
+$("btnRegionReset").onclick = () => {
+region = null;
+regionBox.style.display = "none";
+prevSample = null;
+lastOcrText = "";
+};
+
+function makeRect(a, b){
+return {
+x:Math.min(a.x, b.x),
+y:Math.min(a.y, b.y),
+w:Math.abs(a.x - b.x),
+h:Math.abs(a.y - b.y)
+};
+}
+
+function drawRegionBox(rect){
+if(!rect){regionBox.style.display = "none"; return;}
+regionBox.style.display = "block";
+regionBox.style.left = (rect.x * 100) + "%";
+regionBox.style.top = (rect.y * 100) + "%";
+regionBox.style.width = (rect.w * 100) + "%";
+regionBox.style.height = (rect.h * 100) + "%";
+}
+
+// ---------- OCR worker ----------
+
+async function ensureWorker(){
+const lang = $("ocrLang").value;
+if(worker && workerLang === lang) return;
+setStatus("OCRモデル読み込み中…", "busy");
+if(worker){await worker.terminate(); worker = null;}
+worker = await Tesseract.createWorker(lang);
+await worker.setParameters({tessedit_pageseg_mode:"6"});
+workerLang = lang;
+if(stream) setStatus("キャプチャ中", "on");
+}
+
+// ---------- main loop: change detection ----------
+
+function restartLoop(){
+if(timer) clearInterval(timer);
+if(!stream) return;
+timer = setInterval(tick, parseInt($("interval").value));
+}
+
+function getRegionPx(){
+const vw = video.videoWidth, vh = video.videoHeight;
+if(!vw || !vh) return null;
+const r = region || {x:0, y:0, w:1, h:1};
+return {
+x:Math.floor(r.x * vw),
+y:Math.floor(r.y * vh),
+w:Math.max(8, Math.floor(r.w * vw)),
+h:Math.max(8, Math.floor(r.h * vh))
+};
+}
+
+function tick(){
+if(!stream) return;
+const px = getRegionPx();
+if(!px) return;
+
+// 32x18 grayscale sample for cheap change detection
+sampleCanvas.width = 32;
+sampleCanvas.height = 18;
+sampleCtx.drawImage(video, px.x, px.y, px.w, px.h, 0, 0, 32, 18);
+const d = sampleCtx.getImageData(0, 0, 32, 18).data;
+const cur = new Float32Array(32 * 18);
+for(let i = 0; i < cur.length; i++){
+const j = i * 4;
+cur[i] = d[j] * 0.299 + d[j+1] * 0.587 + d[j+2] * 0.114;
+}
+
+if(prevSample){
+let diff = 0;
+for(let i = 0; i < cur.length; i++) diff += Math.abs(cur[i] - prevSample[i]);
+diff /= cur.length;
+if(diff > 4){
+// screen is still changing (typewriter effect, animation)
+lastChangeAt = Date.now();
+pendingOCR = true;
+}
+}else{
+lastChangeAt = Date.now();
+pendingOCR = true;
+}
+prevSample = cur;
+
+// run OCR only after the region has been still long enough
+if(pendingOCR && !ocrBusy && Date.now() - lastChangeAt >= parseInt($("stability").value)){
+pendingOCR = false;
+runOCR(px);
+}
+}
+
+// ---------- preprocessing ----------
+
+function preprocess(px){
+// upscale small regions so text is ~2x, cap width at 1600
+const scale = Math.min(1600 / px.w, Math.max(1, 2 * (400 / Math.max(px.w, 400))));
+const w = Math.round(px.w * Math.max(1, scale));
+const h = Math.round(px.h * Math.max(1, scale));
+capCanvas.width = w;
+capCanvas.height = h;
+capCtx.imageSmoothingEnabled = true;
+capCtx.imageSmoothingQuality = "high";
+capCtx.drawImage(video, px.x, px.y, px.w, px.h, 0, 0, w, h);
+
+if(!$("prep").checked) return capCanvas;
+
+const img = capCtx.getImageData(0, 0, w, h);
+const d = img.data;
+const n = w * h;
+const lum = new Uint8ClampedArray(n);
+const hist = new Uint32Array(256);
+for(let i = 0; i < n; i++){
+const j = i * 4;
+const v = Math.round(d[j] * 0.299 + d[j+1] * 0.587 + d[j+2] * 0.114);
+lum[i] = v;
+hist[v]++;
+}
+
+// Otsu threshold
+let sum = 0;
+for(let t = 0; t < 256; t++) sum += t * hist[t];
+let sumB = 0, wB = 0, maxVar = 0, otsu = 128;
+for(let t = 0; t < 256; t++){
+wB += hist[t];
+if(wB === 0) continue;
+const wF = n - wB;
+if(wF === 0) break;
+sumB += t * hist[t];
+const mB = sumB / wB, mF = (sum - sumB) / wF;
+const v = wB * wF * (mB - mF) * (mB - mF);
+if(v > maxVar){maxVar = v; otsu = t;}
+}
+
+// auto-invert: game text is usually light on dark → make it dark on light
+let darkCount = 0;
+for(let i = 0; i < n; i++) if(lum[i] < otsu) darkCount++;
+const invert = darkCount > n / 2;
+
+// contrast stretch using 2%/98% percentiles
+let lo = 0, hi = 255, acc = 0;
+for(let t = 0; t < 256; t++){acc += hist[t]; if(acc >= n * 0.02){lo = t; break;}}
+acc = 0;
+for(let t = 255; t >= 0; t--){acc += hist[t]; if(acc >= n * 0.02){hi = t; break;}}
+const range = Math.max(1, hi - lo);
+
+const bin = $("binarize").checked;
+for(let i = 0; i < n; i++){
+let v = lum[i];
+if(bin){
+v = v > otsu ? 255 : 0;
+}else{
+v = Math.min(255, Math.max(0, Math.round((v - lo) * 255 / range)));
+}
+if(invert) v = 255 - v;
+const j = i * 4;
+d[j] = d[j+1] = d[j+2] = v;
+}
+capCtx.putImageData(img, 0, 0);
+return capCanvas;
+}
+
+// ---------- OCR ----------
+
+async function runOCR(px){
+if(!worker) return;
+ocrBusy = true;
+setStatus("OCR実行中…", "busy");
+const t0 = performance.now();
+try{
+const canvas = preprocess(px);
+
+// debug preview
+const pv = $("ocrPreview");
+const pctx = pv.getContext("2d");
+pv.height = Math.max(20, Math.round(pv.width * canvas.height / canvas.width));
+pctx.drawImage(canvas, 0, 0, pv.width, pv.height);
+
+const res = await worker.recognize(canvas, {}, {blocks:true, text:true});
+const ms = Math.round(performance.now() - t0);
+$("stOcr").textContent = ms + "ms";
+
+const text = extractText(res.data);
+$("stConf").textContent = res.data.confidence ? Math.round(res.data.confidence) + "%" : "-";
+
+if(text && text.length >= 2 && similarity(text, lastOcrText) < 0.92){
+lastOcrText = text;
+translate(text);
+}
+}catch(e){
+console.error(e);
+}
+ocrBusy = false;
+if(stream) setStatus("キャプチャ中", "on");
+}
+
+// pull word-level results and drop low-confidence noise
+function extractText(data){
+const minConf = parseInt($("conf").value);
+const isCJK = ["jpn","chi_sim","chi_tra","kor"].includes($("ocrLang").value);
+let lines = [];
+try{
+for(const block of (data.blocks || [])){
+for(const para of (block.paragraphs || [])){
+for(const line of (para.lines || [])){
+const words = (line.words || []).filter(w => w.confidence >= minConf).map(w => w.text);
+if(words.length) lines.push(words.join(isCJK ? "" : " "));
+}
+}
+}
+}catch(e){}
+let text = lines.length ? lines.join("\n") : (data.text || "");
+
+// cleanup
+text = text
+.replace(/-\n(?=[a-z])/g, "")            // re-join hyphenated line breaks
+.replace(/[|｜]/g, "I")
+.replace(/\s+\n/g, "\n")
+.replace(/\n{2,}/g, "\n")
+.trim();
+if(!isCJK) text = text.replace(/\n/g, " ").replace(/ {2,}/g, " ");
+else text = text.replace(/\n/g, "");
+return text;
+}
+
+// quick similarity (char bigram dice) to avoid re-translating OCR jitter
+function similarity(a, b){
+if(!a || !b) return 0;
+if(a === b) return 1;
+const grams = s => {
+const m = new Map();
+for(let i = 0; i < s.length - 1; i++){
+const g = s.substr(i, 2);
+m.set(g, (m.get(g) || 0) + 1);
+}
+return m;
+};
+const ga = grams(a), gb = grams(b);
+let inter = 0, total = 0;
+for(const [g, c] of ga){inter += Math.min(c, gb.get(g) || 0); total += c;}
+for(const c of gb.values()) total += c;
+return total ? (2 * inter) / total : 0;
+}
+
+// ---------- translation ----------
+
+const OCR_TO_ISO = {eng:"en", jpn:"ja", kor:"ko", chi_sim:"zh-CN", chi_tra:"zh-TW",
+deu:"de", fra:"fr", spa:"es", rus:"ru", por:"pt", ita:"it"};
+
+async function translate(text){
+const tgt = $("tgtLang").value;
+const src = OCR_TO_ISO[$("ocrLang").value] || "auto";
+const key = src + ">" + tgt + ":" + text;
+
+if(cache.has(key)){
+showResult(text, cache.get(key), "cache");
+return;
+}
+
+let result = null, used = null;
+const order = $("engine").value === "google" ? ["google","mymemory"] : ["mymemory","google"];
+for(const eng of order){
+try{
+result = eng === "google" ? await trGoogle(text, src, tgt) : await trMyMemory(text, src, tgt);
+if(result){used = eng; break;}
+}catch(e){}
+}
+if(!result){
+setStatus("翻訳に失敗しました（ネットワーク/上限）", "busy");
+return;
+}
+cache.set(key, result);
+if(cache.size > 500) cache.delete(cache.keys().next().value);
+$("stCache").textContent = cache.size;
+showResult(text, result, used);
+}
+
+async function trGoogle(text, src, tgt){
+const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + src +
+"&tl=" + tgt + "&dt=t&q=" + encodeURIComponent(text);
+const res = await fetch(url);
+if(!res.ok) throw new Error("google " + res.status);
+const data = await res.json();
+return (data[0] || []).map(x => x[0]).join("");
+}
+
+async function trMyMemory(text, src, tgt){
+const url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text.slice(0, 490)) +
+"&langpair=" + src + "|" + tgt;
+const res = await fetch(url);
+if(!res.ok) throw new Error("mymemory " + res.status);
+const data = await res.json();
+const t = data.responseData && data.responseData.translatedText;
+if(!t || /MYMEMORY WARNING/.test(t)) throw new Error("mymemory limit");
+return t;
+}
+
+function showResult(src, translated, engine){
+const st = $("subtitleText");
+st.style.opacity = 1;
+st.textContent = translated;
+$("subtitleSrc").textContent = src;
+$("stEngine").textContent = engine;
+
+const item = document.createElement("div");
+item.className = "hItem";
+const tr = document.createElement("div");
+tr.className = "tr";
+tr.textContent = translated;
+const sr = document.createElement("div");
+sr.className = "src";
+sr.textContent = src;
+item.appendChild(tr);
+item.appendChild(sr);
+const h = $("history");
+h.insertBefore(item, h.firstChild);
+while(h.children.length > 50) h.removeChild(h.lastChild);
+
+if(popupWin && !popupWin.closed){
+const el = popupWin.document.getElementById("t");
+if(el) el.textContent = translated;
+}
+}
+
+// ---------- subtitle popup ----------
+
+$("btnPopup").onclick = () => {
+if(popupWin && !popupWin.closed){popupWin.focus(); return;}
+popupWin = window.open("", "gt-subs", "width=800,height=140");
+if(!popupWin) return;
+popupWin.document.write(
+'<!DOCTYPE html><html><head><meta charset="UTF-8"><title>字幕</title>' +
+'<style>body{margin:0;background:#000;color:#fff;font-family:sans-serif;' +
+'display:flex;align-items:center;justify-content:center;height:100vh;padding:0 20px;}' +
+'#t{font-size:26px;line-height:1.5;text-align:center;}</style></head>' +
+'<body><div id="t">…</div></body></html>'
+);
+popupWin.document.close();
+};
+
+</script>
+
+</body>
+
+</html>
