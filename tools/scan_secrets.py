@@ -12,6 +12,7 @@
 
 import os
 import re
+import subprocess
 import sys
 
 # 見つけたら止めるもの。名前だけで分かるファイル。
@@ -20,6 +21,10 @@ BAD_NAMES = re.compile(
     r"|credentials\.json|service-account.*\.json|\.netrc|\.npmrc|\.pypirc)$",
     re.I,
 )
+
+# `.env.example` の類は「値を伏せた雛形」で、リポジトリに入れるのが普通。
+# 名前で止めない。中身は他と同じように調べるので、誤って本物を書いていれば捕まる。
+TEMPLATE_ENV = re.compile(r"^\.env\.(example|sample|template|tpl|dist|local\.example)$", re.I)
 
 # 中身のパターン。(名前, 正規表現)
 PATTERNS = [
@@ -43,37 +48,61 @@ BINARY_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".mp3", ".mp4",
 MAX_BYTES = 2 * 1024 * 1024  # これ以上のテキストは読まない
 
 
-def scan(root):
-    hits = []
+def target_files(root):
+    """調べるべきファイルの一覧。
+
+    git リポジトリなら「git が実際に送るもの」だけを見る。
+    .gitignore で除外されているファイルは、そこに何が書いてあっても
+    リポジトリには入らないので、止める理由が無い。
+    ディスク上の全ファイルを見ていると、手元にしか無い .env のせいで
+    先へ進めなくなる（実際にそうなった）。
+    """
+    if os.path.isdir(os.path.join(root, ".git")):
+        try:
+            out = subprocess.run(
+                ["git", "-C", root, "ls-files", "-co", "--exclude-standard", "-z"],
+                capture_output=True, text=True, check=True).stdout
+            return [r for r in out.split("\0") if r]
+        except (OSError, subprocess.CalledProcessError):
+            pass  # git が使えなければ下の総当たりに落ちる
+
+    found = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for name in filenames:
-            path = os.path.join(dirpath, name)
-            rel = os.path.relpath(path, root)
+            found.append(os.path.relpath(os.path.join(dirpath, name), root))
+    return found
 
-            if BAD_NAMES.match(name):
-                hits.append((rel, 0, "秘密が入りがちなファイル", name))
-                continue
 
-            if os.path.splitext(name)[1].lower() in BINARY_EXT:
-                continue
-            try:
-                if os.path.getsize(path) > MAX_BYTES:
-                    continue
-                text = open(path, encoding="utf-8", errors="ignore").read()
-            except OSError:
-                continue
+def scan(root):
+    hits = []
+    for rel in target_files(root):
+        path = os.path.join(root, rel)
+        name = os.path.basename(rel)
 
-            for lineno, line in enumerate(text.splitlines(), 1):
-                if len(line) > 4000:
-                    continue
-                for label, pat in PATTERNS:
-                    m = pat.search(line)
-                    if m:
-                        found = m.group(0)
-                        masked = found[:6] + "…" + found[-2:] if len(found) > 12 else "…"
-                        hits.append((rel, lineno, label, masked))
-                        break
+        if BAD_NAMES.match(name) and not TEMPLATE_ENV.match(name):
+            hits.append((rel, 0, "秘密が入りがちなファイル", name))
+            continue
+
+        if os.path.splitext(name)[1].lower() in BINARY_EXT:
+            continue
+        try:
+            if os.path.getsize(path) > MAX_BYTES:
+                continue
+            text = open(path, encoding="utf-8", errors="ignore").read()
+        except OSError:
+            continue
+
+        for lineno, line in enumerate(text.splitlines(), 1):
+            if len(line) > 4000:
+                continue
+            for label, pat in PATTERNS:
+                m = pat.search(line)
+                if m:
+                    hit = m.group(0)
+                    masked = hit[:6] + "…" + hit[-2:] if len(hit) > 12 else "…"
+                    hits.append((rel, lineno, label, masked))
+                    break
     return hits
 
 
