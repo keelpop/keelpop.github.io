@@ -45,6 +45,7 @@
 
 - `tools/check_site.py` がリンク切れ・viewport 欠落・孤立ページ・title 重複を検出する。
   GitHub Actions が push のたびに実行し、ERROR があればマージを止める。
+- `tools/scan_secrets.py` が APIキーや秘密鍵の混入を push のたびに検出する。
 - `claude/*` への push で、安全条件を満たすものが main へ自動マージされる（PR は作らない）。
   条件を満たさないものは Issue で知らせる。自動処理が途中で落ちた場合も Issue が立つ。
 - 毎晩の掃除が、autoflow が取りこぼしたブランチを拾う。
