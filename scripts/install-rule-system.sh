@@ -14,6 +14,10 @@
 #   CLAUDE.md .claude/rules .claude/state   雛形（既にあれば上書きしない）
 #
 # 既にあるファイルは上書きしない。中身の調整は入れた先でやること。
+#
+# 雛形が CLAUDE.template.md という名前なのは、CLAUDE.md のままだと
+# Claude Code がこのディレクトリで作業したときに本物の指示書として
+# 読み込んでしまうため（自動マージの門が実際にこれを止めた）。
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -71,9 +75,9 @@ copy .claude/skills/finish-session
 copy .claude/skills/rule-gardener
 
 echo "-- 憲法・ルール・状態"
-fill CLAUDE.md  CLAUDE.md
-fill 00-core.md .claude/rules/00-core.md
-fill NOW.md     .claude/state/NOW.md
+fill CLAUDE.template.md  CLAUDE.md
+fill 00-core.template.md .claude/rules/00-core.md
+fill NOW.template.md     .claude/state/NOW.md
 [ -e "$DST/.claude/state/INCIDENTS.jsonl" ] || { : > "$DST/.claude/state/INCIDENTS.jsonl"; echo "  作った    .claude/state/INCIDENTS.jsonl"; }
 [ -e "$DST/.claude/state/DECISIONS.md" ] || { printf '# 決定の記録\n\n追記のみ。読むときは grep して該当箇所だけ読む。\n' > "$DST/.claude/state/DECISIONS.md"; echo "  作った    .claude/state/DECISIONS.md"; }
 
