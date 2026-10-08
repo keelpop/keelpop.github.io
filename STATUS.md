@@ -1,6 +1,6 @@
 # STATUS （nightly が自動生成。手で編集しない）
 
-更新: 2026-10-07T00:13Z
+更新: 2026-10-08T00:31Z
 
 ## 手が要るもの（開いている Issue）
 - #26 週次メンテナンスが止まっている可能性があります
@@ -10,7 +10,7 @@
 ## マージされていないブランチ
 - claude/dark-echo-horror-game-w5oj19 (+4コミット, 最終: 9 weeks ago)
 - claude/desktop-cat-app-w0t7kk (+1コミット, 最終: 9 weeks ago)
-- claude/scan-progress (+1コミット, 最終: 8 weeks ago)
+- claude/scan-progress (+1コミット, 最終: 9 weeks ago)
 
 ## サイト検査
 WARN  translator.html: 外部のスクリプトを読み込んでいる: https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js
