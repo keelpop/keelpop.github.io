@@ -1,6 +1,6 @@
 # STATUS （nightly が自動生成。手で編集しない）
 
-更新: 2026-11-08T00:03Z
+更新: 2026-11-09T00:12Z
 
 ## 手が要るもの（開いている Issue）
 - #26 週次メンテナンスが止まっている可能性があります
@@ -13,6 +13,8 @@
 - claude/scan-progress (+1コミット, 最終: 3 months ago)
 
 ## サイト検査
-WARN  translator.html: 外部のスクリプトを読み込んでいる: https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js
+WARN  .claude/rules/00-core.md: R-004 は賞味期限切れ（review: 2026-11-08）。効果を判定して延長か退役を決めること
+WARN  .claude/rules/00-core.md: R-005 は賞味期限切れ（review: 2026-11-08）。効果を判定して延長か退役を決めること
+WARN  .claude/rules/00-core.md: R-006 は賞味期限切れ（review: 2026-11-08）。効果を判定して延長か退役を決めること
 
-ERROR 0 / WARN 1
+ERROR 0 / WARN 7
