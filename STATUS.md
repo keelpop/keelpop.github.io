@@ -1,6 +1,6 @@
 # STATUS （nightly が自動生成。手で編集しない）
 
-更新: 2026-11-20T01:55Z
+更新: 2026-11-21T01:50Z
 
 ## 手が要るもの（開いている Issue）
 - #26 週次メンテナンスが止まっている可能性があります
@@ -8,8 +8,8 @@
 - #1 test.html
 
 ## マージされていないブランチ
-- claude/dark-echo-horror-game-w5oj19 (+4コミット, 最終: 3 months ago)
-- claude/desktop-cat-app-w0t7kk (+1コミット, 最終: 3 months ago)
+- claude/dark-echo-horror-game-w5oj19 (+4コミット, 最終: 4 months ago)
+- claude/desktop-cat-app-w0t7kk (+1コミット, 最終: 4 months ago)
 - claude/scan-progress (+1コミット, 最終: 3 months ago)
 
 ## サイト検査
